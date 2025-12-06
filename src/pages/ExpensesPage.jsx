@@ -10,6 +10,8 @@ const ExpensesPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
+  const [sortBy, setSortBy] = useState('date')
+  const [sortOrder, setSortOrder] = useState('desc')
   const [newExpense, setNewExpense] = useState({
     category: '',
     amount: '',
@@ -28,15 +30,44 @@ const ExpensesPage = () => {
     'Other',
   ]
 
-  const filteredExpenses = useMemo(() => {
-    return expenses.filter((exp) => {
+  const filteredAndSortedExpenses = useMemo(() => {
+    let filtered = expenses.filter((exp) => {
       const matchesSearch =
         exp.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
         exp.notes.toLowerCase().includes(searchTerm.toLowerCase())
       const matchesCategory = !categoryFilter || exp.category === categoryFilter
       return matchesSearch && matchesCategory
     })
-  }, [expenses, searchTerm, categoryFilter])
+
+    // Sort
+    filtered.sort((a, b) => {
+      let comparison = 0
+      if (sortBy === 'date') {
+        comparison = parseISO(a.date).getTime() - parseISO(b.date).getTime()
+      } else if (sortBy === 'amount') {
+        comparison = a.amount - b.amount
+      } else if (sortBy === 'category') {
+        comparison = a.category.localeCompare(b.category)
+      }
+      return sortOrder === 'desc' ? -comparison : comparison
+    })
+
+    return filtered
+  }, [expenses, searchTerm, categoryFilter, sortBy, sortOrder])
+
+  const handleSort = (column) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(column)
+      setSortOrder('desc')
+    }
+  }
+
+  const SortIcon = ({ column }) => {
+    if (sortBy !== column) return <span className="text-gray-400">↕</span>
+    return sortOrder === 'asc' ? <span>↑</span> : <span>↓</span>
+  }
 
   const totalExpenses = useMemo(() => {
     return expenses.reduce((sum, exp) => sum + exp.amount, 0)
@@ -131,14 +162,32 @@ const ExpensesPage = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Date
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('date')}
+                >
+                  <div className="flex items-center gap-1">
+                    Date
+                    <SortIcon column="date" />
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Category
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('category')}
+                >
+                  <div className="flex items-center gap-1">
+                    Category
+                    <SortIcon column="category" />
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Amount
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('amount')}
+                >
+                  <div className="flex items-center gap-1">
+                    Amount
+                    <SortIcon column="amount" />
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Notes
@@ -146,7 +195,7 @@ const ExpensesPage = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredExpenses.map((expense) => (
+              {filteredAndSortedExpenses.map((expense) => (
                 <tr key={expense.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {format(parseISO(expense.date), 'MMM dd, yyyy')}
@@ -166,7 +215,7 @@ const ExpensesPage = () => {
               ))}
             </tbody>
           </table>
-          {filteredExpenses.length === 0 && (
+          {filteredAndSortedExpenses.length === 0 && (
             <div className="text-center py-12 text-gray-500">
               {expenses.length === 0 ? 'No expenses recorded yet' : 'No expenses found matching your filters'}
             </div>

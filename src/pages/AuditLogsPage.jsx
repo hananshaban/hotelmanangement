@@ -9,9 +9,11 @@ const AuditLogsPage = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [actionFilter, setActionFilter] = useState('')
   const [entityFilter, setEntityFilter] = useState('')
+  const [sortBy, setSortBy] = useState('timestamp')
+  const [sortOrder, setSortOrder] = useState('desc')
 
-  const filteredLogs = useMemo(() => {
-    return auditLogs.filter((log) => {
+  const filteredAndSortedLogs = useMemo(() => {
+    let filtered = auditLogs.filter((log) => {
       const matchesSearch =
         log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
         log.entityType.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -20,7 +22,38 @@ const AuditLogsPage = () => {
       const matchesEntity = !entityFilter || log.entityType === entityFilter
       return matchesSearch && matchesAction && matchesEntity
     })
-  }, [auditLogs, searchTerm, actionFilter, entityFilter])
+
+    // Sort
+    filtered.sort((a, b) => {
+      let comparison = 0
+      if (sortBy === 'timestamp') {
+        comparison = parseISO(a.timestamp).getTime() - parseISO(b.timestamp).getTime()
+      } else if (sortBy === 'action') {
+        comparison = a.action.localeCompare(b.action)
+      } else if (sortBy === 'entityType') {
+        comparison = a.entityType.localeCompare(b.entityType)
+      } else if (sortBy === 'entityId') {
+        comparison = a.entityId.localeCompare(b.entityId)
+      }
+      return sortOrder === 'desc' ? -comparison : comparison
+    })
+
+    return filtered
+  }, [auditLogs, searchTerm, actionFilter, entityFilter, sortBy, sortOrder])
+
+  const handleSort = (column) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(column)
+      setSortOrder('desc')
+    }
+  }
+
+  const SortIcon = ({ column }) => {
+    if (sortBy !== column) return <span className="text-gray-400">↕</span>
+    return sortOrder === 'asc' ? <span>↑</span> : <span>↓</span>
+  }
 
   const uniqueActions = useMemo(() => {
     const actions = [...new Set(auditLogs.map((log) => log.action))]
@@ -78,17 +111,41 @@ const AuditLogsPage = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Timestamp
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('timestamp')}
+                >
+                  <div className="flex items-center gap-1">
+                    Timestamp
+                    <SortIcon column="timestamp" />
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Action
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('action')}
+                >
+                  <div className="flex items-center gap-1">
+                    Action
+                    <SortIcon column="action" />
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Entity Type
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('entityType')}
+                >
+                  <div className="flex items-center gap-1">
+                    Entity Type
+                    <SortIcon column="entityType" />
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Entity ID
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('entityId')}
+                >
+                  <div className="flex items-center gap-1">
+                    Entity ID
+                    <SortIcon column="entityId" />
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   User
@@ -99,7 +156,7 @@ const AuditLogsPage = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredLogs.map((log) => (
+              {filteredAndSortedLogs.map((log) => (
                 <tr key={log.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {format(parseISO(log.timestamp), 'MMM dd, yyyy HH:mm:ss')}
@@ -131,7 +188,7 @@ const AuditLogsPage = () => {
               ))}
             </tbody>
           </table>
-          {filteredLogs.length === 0 && (
+          {filteredAndSortedLogs.length === 0 && (
             <div className="text-center py-12 text-gray-500">
               {auditLogs.length === 0
                 ? 'No audit logs yet'
@@ -142,7 +199,7 @@ const AuditLogsPage = () => {
       </div>
 
       <div className="mt-4 text-sm text-gray-600">
-        Showing {filteredLogs.length} of {auditLogs.length} audit logs
+        Showing {filteredAndSortedLogs.length} of {auditLogs.length} audit logs
       </div>
     </div>
   )

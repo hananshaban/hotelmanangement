@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { format, parseISO } from 'date-fns'
 import useStore from '../store/useStore'
 import StatusBadge from '../components/StatusBadge'
@@ -12,6 +12,8 @@ const MaintenancePage = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [priorityFilter, setPriorityFilter] = useState('')
+  const [sortBy, setSortBy] = useState('createdAt')
+  const [sortOrder, setSortOrder] = useState('desc')
   const [newRequest, setNewRequest] = useState({
     roomId: '',
     roomNumber: '',
@@ -20,15 +22,49 @@ const MaintenancePage = () => {
     priority: 'Medium',
   })
 
-  const filteredRequests = maintenanceRequests.filter((req) => {
-    const matchesSearch =
-      req.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      req.roomNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      req.description.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = !statusFilter || req.status === statusFilter
-    const matchesPriority = !priorityFilter || req.priority === priorityFilter
-    return matchesSearch && matchesStatus && matchesPriority
-  })
+  const filteredAndSortedRequests = useMemo(() => {
+    let filtered = maintenanceRequests.filter((req) => {
+      const matchesSearch =
+        req.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        req.roomNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        req.description.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchesStatus = !statusFilter || req.status === statusFilter
+      const matchesPriority = !priorityFilter || req.priority === priorityFilter
+      return matchesSearch && matchesStatus && matchesPriority
+    })
+
+    // Sort
+    filtered.sort((a, b) => {
+      let comparison = 0
+      if (sortBy === 'createdAt') {
+        comparison = parseISO(a.createdAt).getTime() - parseISO(b.createdAt).getTime()
+      } else if (sortBy === 'roomNumber') {
+        comparison = a.roomNumber.localeCompare(b.roomNumber)
+      } else if (sortBy === 'title') {
+        comparison = a.title.localeCompare(b.title)
+      } else if (sortBy === 'priority') {
+        const priorityOrder = { Urgent: 4, High: 3, Medium: 2, Low: 1 }
+        comparison = (priorityOrder[a.priority] || 0) - (priorityOrder[b.priority] || 0)
+      }
+      return sortOrder === 'desc' ? -comparison : comparison
+    })
+
+    return filtered
+  }, [maintenanceRequests, searchTerm, statusFilter, priorityFilter, sortBy, sortOrder])
+
+  const handleSort = (column) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(column)
+      setSortOrder('desc')
+    }
+  }
+
+  const SortIcon = ({ column }) => {
+    if (sortBy !== column) return <span className="text-gray-400">↕</span>
+    return sortOrder === 'asc' ? <span>↑</span> : <span>↓</span>
+  }
 
   const handleCreateRequest = () => {
     if (!newRequest.roomNumber || !newRequest.title || !newRequest.description) {
@@ -136,20 +172,44 @@ const MaintenancePage = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Request ID
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Room
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('roomNumber')}
+                >
+                  <div className="flex items-center gap-1">
+                    Room
+                    <SortIcon column="roomNumber" />
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Title
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('title')}
+                >
+                  <div className="flex items-center gap-1">
+                    Title
+                    <SortIcon column="title" />
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Priority
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('priority')}
+                >
+                  <div className="flex items-center gap-1">
+                    Priority
+                    <SortIcon column="priority" />
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Created
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('createdAt')}
+                >
+                  <div className="flex items-center gap-1">
+                    Created
+                    <SortIcon column="createdAt" />
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Actions
@@ -157,7 +217,7 @@ const MaintenancePage = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredRequests.map((request) => (
+              {filteredAndSortedRequests.map((request) => (
                 <tr key={request.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {request.id}
@@ -208,7 +268,7 @@ const MaintenancePage = () => {
               ))}
             </tbody>
           </table>
-          {filteredRequests.length === 0 && (
+          {filteredAndSortedRequests.length === 0 && (
             <div className="text-center py-12 text-gray-500">
               {maintenanceRequests.length === 0
                 ? 'No maintenance requests yet'

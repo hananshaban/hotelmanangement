@@ -8,6 +8,8 @@ const GuestsPage = () => {
   const { guests, addGuest } = useStore()
   const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
+  const [sortBy, setSortBy] = useState('id')
+  const [sortOrder, setSortOrder] = useState('desc')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [newGuest, setNewGuest] = useState({
     name: '',
@@ -17,11 +19,44 @@ const GuestsPage = () => {
     notes: '',
   })
 
-  const filteredGuests = useMemo(() => {
-    return guests.filter((guest) =>
+  const filteredAndSortedGuests = useMemo(() => {
+    let filtered = guests.filter((guest) =>
       guest.name.toLowerCase().includes(searchTerm.toLowerCase())
     )
-  }, [searchTerm, guests])
+
+    // Sort
+    filtered.sort((a, b) => {
+      let comparison = 0
+      if (sortBy === 'name') {
+        comparison = a.name.localeCompare(b.name)
+      } else if (sortBy === 'email') {
+        comparison = a.email.localeCompare(b.email)
+      } else if (sortBy === 'phone') {
+        comparison = a.phone.localeCompare(b.phone)
+      } else if (sortBy === 'pastStays') {
+        comparison = (a.pastStays || 0) - (b.pastStays || 0)
+      } else if (sortBy === 'id') {
+        comparison = Number(a.id) - Number(b.id)
+      }
+      return sortOrder === 'desc' ? -comparison : comparison
+    })
+
+    return filtered
+  }, [searchTerm, guests, sortBy, sortOrder])
+
+  const handleSort = (column) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(column)
+      setSortOrder('desc')
+    }
+  }
+
+  const SortIcon = ({ column }) => {
+    if (sortBy !== column) return <span className="text-gray-400">↕</span>
+    return sortOrder === 'asc' ? <span>↑</span> : <span>↓</span>
+  }
 
   const handleAddGuest = () => {
     // Validation
@@ -78,17 +113,41 @@ const GuestsPage = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('name')}
+                >
+                  <div className="flex items-center gap-1">
+                    Name
+                    <SortIcon column="name" />
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Phone
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('phone')}
+                >
+                  <div className="flex items-center gap-1">
+                    Phone
+                    <SortIcon column="phone" />
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('email')}
+                >
+                  <div className="flex items-center gap-1">
+                    Email
+                    <SortIcon column="email" />
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Past Stays
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('pastStays')}
+                >
+                  <div className="flex items-center gap-1">
+                    Past Stays
+                    <SortIcon column="pastStays" />
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Notes
@@ -96,7 +155,7 @@ const GuestsPage = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredGuests.map((guest) => (
+              {filteredAndSortedGuests.map((guest) => (
                 <tr
                   key={guest.id}
                   className="hover:bg-gray-50 cursor-pointer"
@@ -123,14 +182,14 @@ const GuestsPage = () => {
               ))}
             </tbody>
           </table>
-          {filteredGuests.length === 0 && (
+          {filteredAndSortedGuests.length === 0 && (
             <div className="text-center py-12 text-gray-500">No guests found</div>
           )}
         </div>
       </div>
 
       <div className="mt-4 text-sm text-gray-600">
-        Showing {filteredGuests.length} of {guests.length} guests
+        Showing {filteredAndSortedGuests.length} of {guests.length} guests
       </div>
 
       {/* Add Guest Modal */}

@@ -11,7 +11,8 @@ const ReservationsPage = () => {
   const { reservations, addInvoice, guests, rooms, addReservation } = useStore()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
-  const [sortBy, setSortBy] = useState('checkIn')
+  const [sortBy, setSortBy] = useState('createdAt')
+  const [sortOrder, setSortOrder] = useState('desc')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [newReservation, setNewReservation] = useState({
     guestId: '',
@@ -34,14 +35,25 @@ const ReservationsPage = () => {
 
     // Sort
     filtered.sort((a, b) => {
+      let comparison = 0
       if (sortBy === 'checkIn') {
-        return compareAsc(parseISO(a.checkIn), parseISO(b.checkIn))
+        comparison = compareAsc(parseISO(a.checkIn), parseISO(b.checkIn))
       } else if (sortBy === 'checkOut') {
-        return compareAsc(parseISO(a.checkOut), parseISO(b.checkOut))
+        comparison = compareAsc(parseISO(a.checkOut), parseISO(b.checkOut))
       } else if (sortBy === 'guestName') {
-        return a.guestName.localeCompare(b.guestName)
+        comparison = a.guestName.localeCompare(b.guestName)
+      } else if (sortBy === 'createdAt') {
+        const dateA = a.createdAt ? parseISO(a.createdAt) : parseISO(a.checkIn)
+        const dateB = b.createdAt ? parseISO(b.createdAt) : parseISO(b.checkIn)
+        comparison = compareAsc(dateA, dateB)
+      } else if (sortBy === 'totalAmount') {
+        comparison = (a.totalAmount || 0) - (b.totalAmount || 0)
+      } else if (sortBy === 'roomNumber') {
+        comparison = a.roomNumber.localeCompare(b.roomNumber)
+      } else if (sortBy === 'id') {
+        comparison = a.id.localeCompare(b.id)
       }
-      return 0
+      return sortOrder === 'desc' ? -comparison : comparison
     })
 
     return filtered
@@ -175,6 +187,20 @@ const ReservationsPage = () => {
     { value: 'Cancelled', label: 'Cancelled' },
   ]
 
+  const handleSort = (column) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(column)
+      setSortOrder('desc')
+    }
+  }
+
+  const SortIcon = ({ column }) => {
+    if (sortBy !== column) return <span className="text-gray-400">↕</span>
+    return sortOrder === 'asc' ? <span>↑</span> : <span>↓</span>
+  }
+
   const sortOptions = [
     { value: 'checkIn', label: 'Check-in Date' },
     { value: 'checkOut', label: 'Check-out Date' },
@@ -198,7 +224,7 @@ const ReservationsPage = () => {
 
       {/* Filters */}
       <div className="card mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <SearchInput
             value={searchTerm}
             onChange={setSearchTerm}
@@ -212,13 +238,6 @@ const ReservationsPage = () => {
             placeholder="All Statuses"
             label="Status"
           />
-          <FilterSelect
-            value={sortBy}
-            onChange={setSortBy}
-            options={sortOptions}
-            placeholder="Sort by..."
-            label="Sort By"
-          />
         </div>
       </div>
 
@@ -228,26 +247,62 @@ const ReservationsPage = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Reservation ID
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('id')}
+                >
+                  <div className="flex items-center gap-1">
+                    Reservation ID
+                    <SortIcon column="id" />
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Guest Name
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('guestName')}
+                >
+                  <div className="flex items-center gap-1">
+                    Guest Name
+                    <SortIcon column="guestName" />
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Room
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('roomNumber')}
+                >
+                  <div className="flex items-center gap-1">
+                    Room
+                    <SortIcon column="roomNumber" />
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Check-in
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('checkIn')}
+                >
+                  <div className="flex items-center gap-1">
+                    Check-in
+                    <SortIcon column="checkIn" />
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Check-out
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('checkOut')}
+                >
+                  <div className="flex items-center gap-1">
+                    Check-out
+                    <SortIcon column="checkOut" />
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total Amount
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('totalAmount')}
+                >
+                  <div className="flex items-center gap-1">
+                    Total Amount
+                    <SortIcon column="totalAmount" />
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions

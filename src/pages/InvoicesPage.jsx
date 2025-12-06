@@ -13,16 +13,49 @@ const InvoicesPage = () => {
   const [paymentMethod, setPaymentMethod] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [sortBy, setSortBy] = useState('issueDate')
+  const [sortOrder, setSortOrder] = useState('desc')
 
-  const filteredInvoices = useMemo(() => {
-    return invoices.filter((invoice) => {
+  const filteredAndSortedInvoices = useMemo(() => {
+    let filtered = invoices.filter((invoice) => {
       const matchesSearch =
         invoice.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         invoice.reservationId?.toLowerCase().includes(searchTerm.toLowerCase())
       const matchesStatus = !statusFilter || invoice.status === statusFilter
       return matchesSearch && matchesStatus
     })
-  }, [searchTerm, statusFilter, invoices])
+
+    // Sort
+    filtered.sort((a, b) => {
+      let comparison = 0
+      if (sortBy === 'issueDate') {
+        comparison = parseISO(a.issueDate).getTime() - parseISO(b.issueDate).getTime()
+      } else if (sortBy === 'dueDate') {
+        comparison = parseISO(a.dueDate).getTime() - parseISO(b.dueDate).getTime()
+      } else if (sortBy === 'amount') {
+        comparison = a.amount - b.amount
+      } else if (sortBy === 'id') {
+        comparison = a.id.localeCompare(b.id)
+      }
+      return sortOrder === 'desc' ? -comparison : comparison
+    })
+
+    return filtered
+  }, [searchTerm, statusFilter, invoices, sortBy, sortOrder])
+
+  const handleSort = (column) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(column)
+      setSortOrder('desc')
+    }
+  }
+
+  const SortIcon = ({ column }) => {
+    if (sortBy !== column) return <span className="text-gray-400">↕</span>
+    return sortOrder === 'asc' ? <span>↑</span> : <span>↓</span>
+  }
 
   const getGuestName = (guestId) => {
     const guest = guests.find((g) => String(g.id) === String(guestId))
@@ -96,8 +129,14 @@ const InvoicesPage = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Invoice ID
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('id')}
+                >
+                  <div className="flex items-center gap-1">
+                    Invoice ID
+                    <SortIcon column="id" />
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Reservation ID
@@ -105,14 +144,32 @@ const InvoicesPage = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Guest
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Issue Date
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('issueDate')}
+                >
+                  <div className="flex items-center gap-1">
+                    Issue Date
+                    <SortIcon column="issueDate" />
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Due Date
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('dueDate')}
+                >
+                  <div className="flex items-center gap-1">
+                    Due Date
+                    <SortIcon column="dueDate" />
+                  </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Amount
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('amount')}
+                >
+                  <div className="flex items-center gap-1">
+                    Amount
+                    <SortIcon column="amount" />
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
@@ -126,7 +183,7 @@ const InvoicesPage = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredInvoices.map((invoice) => {
+              {filteredAndSortedInvoices.map((invoice) => {
                 const reservation = getReservationInfo(invoice.reservationId)
                 return (
                   <tr key={invoice.id} className="hover:bg-gray-50">
@@ -192,7 +249,7 @@ const InvoicesPage = () => {
               })}
             </tbody>
           </table>
-          {filteredInvoices.length === 0 && (
+          {filteredAndSortedInvoices.length === 0 && (
             <div className="text-center py-12 text-gray-500">
               {invoices.length === 0
                 ? 'No invoices yet. Create invoices from reservations.'
@@ -203,7 +260,7 @@ const InvoicesPage = () => {
       </div>
 
       <div className="mt-4 text-sm text-gray-600">
-        Showing {filteredInvoices.length} of {invoices.length} invoices
+        Showing {filteredAndSortedInvoices.length} of {invoices.length} invoices
       </div>
 
       {/* Payment Method Modal */}
