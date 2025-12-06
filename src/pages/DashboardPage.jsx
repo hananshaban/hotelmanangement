@@ -62,51 +62,10 @@ const DashboardPage = () => {
   }, [invoices, expenses])
 
   // Advanced analytics calculations
-  const occupancyRate = useMemo(() => {
-    const today = new Date()
-    const occupiedCount = reservations.filter((res) => {
-      if (res.status === 'Cancelled') return false
-      const checkIn = parseISO(res.checkIn)
-      const checkOut = parseISO(res.checkOut)
-      return isWithinInterval(today, { start: checkIn, end: checkOut })
-    }).length
-    return rooms.length > 0 ? (occupiedCount / rooms.length) * 100 : 0
-  }, [rooms, reservations])
-
-  const adr = useMemo(() => {
-    const paidInvoices = invoices.filter((inv) => inv.status === 'Paid')
-    if (paidInvoices.length === 0) return 0
-    const totalAmount = paidInvoices.reduce((sum, inv) => sum + inv.amount, 0)
-    return totalAmount / paidInvoices.length
-  }, [invoices])
-
-  const revpar = useMemo(() => {
-    const totalRevenue = invoices
-      .filter((inv) => inv.status === 'Paid')
-      .reduce((sum, inv) => sum + inv.amount, 0)
-    return rooms.length > 0 ? totalRevenue / rooms.length : 0
-  }, [invoices, rooms])
-
   const cancellationRate = useMemo(() => {
     if (reservations.length === 0) return 0
     const cancelledCount = reservations.filter((res) => res.status === 'Cancelled').length
     return (cancelledCount / reservations.length) * 100
-  }, [reservations])
-
-  const reservationLeadTime = useMemo(() => {
-    const confirmedReservations = reservations.filter(
-      (res) => res.status !== 'Cancelled' && res.createdAt
-    )
-    if (confirmedReservations.length === 0) return 0
-
-    const totalLeadTime = confirmedReservations.reduce((sum, res) => {
-      const createdAt = parseISO(res.createdAt)
-      const checkIn = parseISO(res.checkIn)
-      const days = Math.ceil((checkIn - createdAt) / (1000 * 60 * 60 * 24))
-      return sum + days
-    }, 0)
-
-    return totalLeadTime / confirmedReservations.length
   }, [reservations])
 
   // Chart data: Reservations by Status (Pie Chart)
@@ -240,29 +199,9 @@ const DashboardPage = () => {
           className={financialStats.profit >= 0 ? 'text-green-600' : 'text-red-600'}
         />
         <StatCard
-          title="Occupancy Rate"
-          value={`${occupancyRate.toFixed(1)}%`}
-          icon={<span className="text-2xl">📈</span>}
-        />
-        <StatCard
-          title="ADR"
-          value={`$${adr.toFixed(2)}`}
-          icon={<span className="text-2xl">💳</span>}
-        />
-        <StatCard
-          title="RevPAR"
-          value={`$${revpar.toFixed(2)}`}
-          icon={<span className="text-2xl">🏨</span>}
-        />
-        <StatCard
           title="Cancellation Rate"
           value={`${cancellationRate.toFixed(1)}%`}
           icon={<span className="text-2xl">❌</span>}
-        />
-        <StatCard
-          title="Avg Lead Time"
-          value={`${reservationLeadTime.toFixed(1)} days`}
-          icon={<span className="text-2xl">⏱️</span>}
         />
       </div>
 
@@ -325,24 +264,6 @@ const DashboardPage = () => {
 
       {/* Advanced Analytics Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        {/* Occupancy Rate Chart */}
-        <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Occupancy Rate Trend</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={[
-              { period: 'Today', rate: occupancyRate },
-              { period: 'This Week', rate: occupancyRate * 0.95 },
-              { period: 'This Month', rate: occupancyRate * 0.9 },
-            ]}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="period" />
-              <YAxis />
-              <Tooltip formatter={(value) => `${value.toFixed(1)}%`} />
-              <Bar dataKey="rate" fill="#3b82f6" name="Occupancy %" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
         {/* Cancellation Rate Chart */}
         <div className="card">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Cancellation Rate</h3>
