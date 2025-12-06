@@ -3,13 +3,23 @@ import { format, parseISO, compareAsc, addDays } from 'date-fns'
 import StatusBadge from '../components/StatusBadge'
 import SearchInput from '../components/SearchInput'
 import FilterSelect from '../components/FilterSelect'
+import Modal from '../components/Modal'
+import GuestSelect from '../components/GuestSelect'
 import useStore from '../store/useStore'
 
 const ReservationsPage = () => {
-  const { reservations, addInvoice, guests } = useStore()
+  const { reservations, addInvoice, guests, rooms, addReservation } = useStore()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [sortBy, setSortBy] = useState('checkIn')
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [newReservation, setNewReservation] = useState({
+    guestId: '',
+    roomNumber: '',
+    checkIn: '',
+    checkOut: '',
+    status: 'Confirmed',
+  })
 
   const filteredAndSortedReservations = useMemo(() => {
     let filtered = reservations.filter((res) => {
@@ -64,6 +74,82 @@ const ReservationsPage = () => {
     alert(`Invoice created successfully for reservation ${reservation.id}`)
   }
 
+  const handleAddReservation = () => {
+    // Validation
+    if (!newReservation.guestId || !newReservation.roomNumber || !newReservation.checkIn || !newReservation.checkOut) {
+      alert('Please fill in all required fields')
+      return
+    }
+
+    const checkIn = parseISO(newReservation.checkIn)
+    const checkOut = parseISO(newReservation.checkOut)
+
+    if (checkOut <= checkIn) {
+      alert('Check-out date must be after check-in date')
+      return
+    }
+
+    // Check for overlapping reservations
+    const hasOverlap = reservations.some((res) => {
+      if (res.roomNumber !== newReservation.roomNumber || res.status === 'Cancelled') return false
+      const resCheckIn = parseISO(res.checkIn)
+      const resCheckOut = parseISO(res.checkOut)
+      return (
+        (checkIn >= resCheckIn && checkIn < resCheckOut) ||
+        (checkOut > resCheckIn && checkOut <= resCheckOut) ||
+        (checkIn <= resCheckIn && checkOut >= resCheckOut)
+      )
+    })
+
+    if (hasOverlap) {
+      if (!confirm('Room already has a reservation during this period. Continue anyway?')) {
+        return
+      }
+    }
+
+    // Find guest and room
+    const guest = guests.find((g) => String(g.id) === String(newReservation.guestId))
+    const room = rooms.find((r) => r.roomNumber === newReservation.roomNumber)
+
+    if (!guest) {
+      alert('Guest not found')
+      return
+    }
+
+    if (!room) {
+      alert('Room not found')
+      return
+    }
+
+    // Calculate total amount
+    const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24))
+    const totalAmount = room.pricePerNight * nights
+
+    // Create reservation
+    const reservation = {
+      guestId: String(guest.id),
+      guestName: guest.name,
+      guestEmail: guest.email,
+      guestPhone: guest.phone,
+      roomNumber: newReservation.roomNumber,
+      checkIn: newReservation.checkIn,
+      checkOut: newReservation.checkOut,
+      status: newReservation.status,
+      totalAmount,
+    }
+
+    addReservation(reservation)
+    setIsModalOpen(false)
+    setNewReservation({
+      guestId: '',
+      roomNumber: '',
+      checkIn: '',
+      checkOut: '',
+      status: 'Confirmed',
+    })
+    alert('Reservation created successfully!')
+  }
+
   const statusOptions = [
     { value: 'Confirmed', label: 'Confirmed' },
     { value: 'Checked-in', label: 'Checked-in' },
@@ -79,9 +165,17 @@ const ReservationsPage = () => {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Reservations</h1>
-        <p className="text-gray-600 mt-2">View and manage all hotel reservations</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Reservations</h1>
+          <p className="text-gray-600 mt-2">View and manage all hotel reservations</p>
+        </div>
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="btn btn-primary"
+        >
+          + Add Reservation
+        </button>
       </div>
 
       {/* Filters */}
@@ -193,6 +287,141 @@ const ReservationsPage = () => {
       <div className="mt-4 text-sm text-gray-600">
         Showing {filteredAndSortedReservations.length} of {reservations.length} reservations
       </div>
+
+      {/* Add Reservation Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false)
+          setNewReservation({
+            guestId: '',
+            roomNumber: '',
+            checkIn: '',
+            checkOut: '',
+            status: 'Confirmed',
+          })
+        }}
+        title="Create New Reservation"
+      >
+        <div className="space-y-4">
+          <GuestSelect
+            value={newReservation.guestId}
+            onChange={(guestId) => setNewReservation({ ...newReservation, guestId })}
+            guests={guests}
+            label="Guest"
+            placeholder="Search for a guest by name, email, or phone..."
+          />
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Room *
+            </label>
+            <select
+              value={newReservation.roomNumber}
+              onChange={(e) =>
+                setNewReservation({ ...newReservation, roomNumber: e.target.value })
+              }
+              className="input"
+              required
+            >
+              <option value="">Select a room</option>
+              {rooms.map((room) => (
+                <option key={room.id} value={room.roomNumber}>
+                  {room.roomNumber} - {room.type} (${room.pricePerNight}/night) - {room.status}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Check-in Date *
+            </label>
+            <input
+              type="date"
+              value={newReservation.checkIn}
+              onChange={(e) =>
+                setNewReservation({ ...newReservation, checkIn: e.target.value })
+              }
+              className="input"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Check-out Date *
+            </label>
+            <input
+              type="date"
+              value={newReservation.checkOut}
+              onChange={(e) =>
+                setNewReservation({ ...newReservation, checkOut: e.target.value })
+              }
+              className="input"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Status *
+            </label>
+            <select
+              value={newReservation.status}
+              onChange={(e) =>
+                setNewReservation({ ...newReservation, status: e.target.value })
+              }
+              className="input"
+              required
+            >
+              <option value="Confirmed">Confirmed</option>
+              <option value="Checked-in">Checked-in</option>
+              <option value="Checked-out">Checked-out</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
+
+          {newReservation.guestId && newReservation.roomNumber && newReservation.checkIn && newReservation.checkOut && (
+            <div className="p-3 bg-gray-50 rounded-md">
+              <div className="text-sm text-gray-600">
+                <div>
+                  <strong>Estimated Total:</strong>{' '}
+                  {(() => {
+                    const room = rooms.find((r) => r.roomNumber === newReservation.roomNumber)
+                    if (!room) return '$0'
+                    const checkIn = parseISO(newReservation.checkIn)
+                    const checkOut = parseISO(newReservation.checkOut)
+                    const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24))
+                    return `$${(room.pricePerNight * nights).toLocaleString()} (${nights} night${nights !== 1 ? 's' : ''})`
+                  })()}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              onClick={() => {
+                setIsModalOpen(false)
+                setNewReservation({
+                  guestId: '',
+                  roomNumber: '',
+                  checkIn: '',
+                  checkOut: '',
+                  status: 'Confirmed',
+                })
+              }}
+              className="btn btn-secondary"
+            >
+              Cancel
+            </button>
+            <button onClick={handleAddReservation} className="btn btn-primary">
+              Create Reservation
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

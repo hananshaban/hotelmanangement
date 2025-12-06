@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, parseISO, isWithinInterval, addDays, startOfWeek, endOfWeek } from 'date-fns'
 import Modal from '../components/Modal'
 import StatusBadge from '../components/StatusBadge'
+import GuestSelect from '../components/GuestSelect'
 import useStore from '../store/useStore'
 
 const CalendarPage = () => {
@@ -10,7 +11,7 @@ const CalendarPage = () => {
   const [selectedReservation, setSelectedReservation] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [newReservation, setNewReservation] = useState({
-    guestName: '',
+    guestId: '',
     roomNumber: '',
     checkIn: '',
     checkOut: '',
@@ -43,8 +44,8 @@ const CalendarPage = () => {
 
   const handleCreateReservation = () => {
     // Validation
-    if (!newReservation.guestName || !newReservation.roomNumber || !newReservation.checkIn || !newReservation.checkOut) {
-      alert('Please fill in all fields')
+    if (!newReservation.guestId || !newReservation.roomNumber || !newReservation.checkIn || !newReservation.checkOut) {
+      alert('Please fill in all required fields')
       return
     }
 
@@ -74,30 +75,41 @@ const CalendarPage = () => {
       }
     }
 
-    // Create new reservation
+    // Find guest and room
+    const guest = guests.find((g) => String(g.id) === String(newReservation.guestId))
     const room = rooms.find((r) => r.roomNumber === newReservation.roomNumber)
+
+    if (!guest) {
+      alert('Guest not found')
+      return
+    }
+
+    if (!room) {
+      alert('Room not found')
+      return
+    }
+
+    // Calculate total amount
     const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24))
-    const totalAmount = room ? room.pricePerNight * nights : 0
+    const totalAmount = room.pricePerNight * nights
 
-    // Try to find guest by name to link guestId
-    const guest = guests.find((g) => g.name === newReservation.guestName)
-
+    // Create new reservation
     const newRes = {
-      guestName: newReservation.guestName,
+      guestId: String(guest.id),
+      guestName: guest.name,
+      guestEmail: guest.email,
+      guestPhone: guest.phone,
       roomNumber: newReservation.roomNumber,
       checkIn: newReservation.checkIn,
       checkOut: newReservation.checkOut,
       status: newReservation.status,
       totalAmount,
-      guestEmail: guest?.email || '',
-      guestPhone: guest?.phone || '',
-      guestId: guest ? String(guest.id) : '', // Link guest if found
     }
 
     addReservation(newRes)
     setIsModalOpen(false)
     setNewReservation({
-      guestName: '',
+      guestId: '',
       roomNumber: '',
       checkIn: '',
       checkOut: '',
@@ -284,7 +296,7 @@ const CalendarPage = () => {
         onClose={() => {
           setIsModalOpen(false)
           setNewReservation({
-            guestName: '',
+            guestId: '',
             roomNumber: '',
             checkIn: '',
             checkOut: '',
@@ -294,20 +306,13 @@ const CalendarPage = () => {
         title="Create New Reservation"
       >
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Guest Name *
-            </label>
-            <input
-              type="text"
-              value={newReservation.guestName}
-              onChange={(e) =>
-                setNewReservation({ ...newReservation, guestName: e.target.value })
-              }
-              className="input"
-              required
-            />
-          </div>
+          <GuestSelect
+            value={newReservation.guestId}
+            onChange={(guestId) => setNewReservation({ ...newReservation, guestId })}
+            guests={guests}
+            label="Guest"
+            placeholder="Search for a guest by name, email, or phone..."
+          />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Room *
@@ -374,12 +379,30 @@ const CalendarPage = () => {
               <option value="Cancelled">Cancelled</option>
             </select>
           </div>
+          {newReservation.guestId && newReservation.roomNumber && newReservation.checkIn && newReservation.checkOut && (
+            <div className="p-3 bg-gray-50 rounded-md">
+              <div className="text-sm text-gray-600">
+                <div>
+                  <strong>Estimated Total:</strong>{' '}
+                  {(() => {
+                    const room = rooms.find((r) => r.roomNumber === newReservation.roomNumber)
+                    if (!room) return '$0'
+                    const checkIn = parseISO(newReservation.checkIn)
+                    const checkOut = parseISO(newReservation.checkOut)
+                    const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24))
+                    return `$${(room.pricePerNight * nights).toLocaleString()} (${nights} night${nights !== 1 ? 's' : ''})`
+                  })()}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-end gap-3 pt-4">
             <button
               onClick={() => {
                 setIsModalOpen(false)
                 setNewReservation({
-                  guestName: '',
+                  guestId: '',
                   roomNumber: '',
                   checkIn: '',
                   checkOut: '',
