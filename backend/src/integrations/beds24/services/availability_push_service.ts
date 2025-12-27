@@ -27,7 +27,7 @@ export class AvailabilityPushService {
   async pushRoomAvailability(
     roomId: string,
     dateRange?: DateRange,
-    options: { includeRates?: boolean; isRoomType?: boolean } = {}
+    options: { includeRates?: boolean; isRoomType?: boolean; idempotencyKey?: string } = {}
   ): Promise<SyncResult> {
     try {
       const range = dateRange || getDefaultDateRange();
@@ -102,6 +102,7 @@ export class AvailabilityPushService {
       await this.client.makeRequest('/inventory/rooms/calendar', {
         method: 'PUT',
         body: calendarUpdate,
+        idempotencyKey: options.idempotencyKey,
       });
 
       // Optionally push rates
@@ -189,7 +190,7 @@ export class AvailabilityPushService {
    */
   async pushRates(
     roomId: string,
-    dateRange?: DateRange,
+    idempotencyKey?: string,
     isRoomType: boolean = false
   ): Promise<SyncResult> {
     try {
@@ -245,6 +246,7 @@ export class AvailabilityPushService {
       await this.client.makeRequest('/inventory/rooms/calendar', {
         method: 'PUT',
         body: ratesUpdate,
+        idempotencyKey,
       });
 
       return {

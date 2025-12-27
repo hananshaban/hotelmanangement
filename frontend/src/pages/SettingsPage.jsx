@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react'
 import { api } from '../utils/api.js'
 import useAuthStore from '../store/authStore.js'
+import { useToast } from '../hooks/useToast'
+import { useConfirmation } from '../hooks/useConfirmation'
+import { usePrompt } from '../hooks/usePrompt'
 
 const SettingsPage = () => {
   const { user } = useAuthStore()
+  const toast = useToast()
+  const confirmation = useConfirmation()
+  const prompt = usePrompt()
   const [activeTab, setActiveTab] = useState('hotel')
   const [settings, setSettings] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -175,7 +181,7 @@ const SettingsPage = () => {
       setInviteCode('')
       setBeds24PropertyId('')
       
-      alert('Beds24 authentication successful!')
+      toast.success('Beds24 authentication successful!')
     } catch (err) {
       setBeds24Error(err.message || 'Failed to authenticate with Beds24')
       console.error('Error authenticating Beds24:', err)
@@ -203,7 +209,7 @@ const SettingsPage = () => {
       setTestingConnection(true)
       setBeds24Error(null)
       const result = await api.settings.testBeds24Connection()
-      alert(`Connection successful! Scopes: ${result.scopes?.join(', ') || 'N/A'}`)
+      toast.success(`Connection successful! Scopes: ${result.scopes?.join(', ') || 'N/A'}`)
     } catch (err) {
       setBeds24Error(err.message || 'Connection test failed')
       console.error('Error testing connection:', err)
@@ -213,7 +219,12 @@ const SettingsPage = () => {
   }
 
   const handleTriggerInitialSync = async () => {
-    if (!confirm('This will sync all rooms and reservations from Beds24. This may take several minutes. Continue?')) {
+    const confirmed = await confirmation({
+      title: 'Trigger Initial Sync',
+      message: 'This will sync all rooms and reservations from Beds24. This may take several minutes. Continue?',
+      variant: 'warning',
+    })
+    if (!confirmed) {
       return
     }
 
@@ -229,7 +240,7 @@ const SettingsPage = () => {
       if (config.syncStatus === 'running') {
         // Status will auto-update via polling
       } else {
-        alert('Initial sync started in background. This may take several minutes. Check back later.')
+        toast.info('Initial sync started in background. This may take several minutes. Check back later.')
       }
     } catch (err) {
       setBeds24Error(err.message || 'Failed to start initial sync')
@@ -252,7 +263,7 @@ const SettingsPage = () => {
       setBeds24Rooms(beds24RoomsData)
       setPmsRooms(pmsRoomsData)
       
-      alert('Room mapped successfully!')
+      toast.success('Room mapped successfully!')
     } catch (err) {
       setBeds24Error(err.message || 'Failed to map room')
       console.error('Error mapping room:', err)
@@ -260,7 +271,12 @@ const SettingsPage = () => {
   }
 
   const handleUnmapRoom = async (roomId) => {
-    if (!confirm('Are you sure you want to unmap this room?')) {
+    const confirmed = await confirmation({
+      title: 'Unmap Room',
+      message: 'Are you sure you want to unmap this room?',
+      variant: 'warning',
+    })
+    if (!confirmed) {
       return
     }
 
@@ -276,7 +292,7 @@ const SettingsPage = () => {
       setBeds24Rooms(beds24RoomsData)
       setPmsRooms(pmsRoomsData)
       
-      alert('Room unmapped successfully!')
+      toast.success('Room unmapped successfully!')
     } catch (err) {
       setBeds24Error(err.message || 'Failed to unmap room')
       console.error('Error unmapping room:', err)
@@ -284,7 +300,12 @@ const SettingsPage = () => {
   }
 
   const handleAutoCreateRooms = async () => {
-    if (!confirm('This will create PMS rooms for all unmapped Beds24 rooms. Continue?')) {
+    const confirmed = await confirmation({
+      title: 'Auto-Create Rooms',
+      message: 'This will create PMS rooms for all unmapped Beds24 rooms. Continue?',
+      variant: 'warning',
+    })
+    if (!confirmed) {
       return
     }
 
@@ -296,7 +317,7 @@ const SettingsPage = () => {
         defaultFloor: 1,
       })
       
-      alert(`Created ${result.created} rooms, skipped ${result.skipped}`)
+      toast.success(`Created ${result.created} rooms, skipped ${result.skipped}`)
       
       // Refresh rooms
       const [beds24RoomsData, pmsRoomsData] = await Promise.all([
@@ -334,7 +355,7 @@ const SettingsPage = () => {
       })
       setShowAddStaffForm(false)
       
-      alert('Staff member added successfully!')
+      toast.success('Staff member added successfully!')
     } catch (err) {
       setStaffError(err.message || 'Failed to add staff member')
       console.error('Error adding staff:', err)
@@ -365,7 +386,7 @@ const SettingsPage = () => {
       setStaff(data)
       
       setEditingStaff(null)
-      alert('Staff member updated successfully!')
+      toast.success('Staff member updated successfully!')
     } catch (err) {
       setStaffError(err.message || 'Failed to update staff member')
       console.error('Error updating staff:', err)
@@ -373,7 +394,12 @@ const SettingsPage = () => {
   }
 
   const handleDeleteStaff = async (id) => {
-    if (!confirm('Are you sure you want to delete this staff member?')) {
+    const confirmed = await confirmation({
+      title: 'Delete Staff Member',
+      message: 'Are you sure you want to delete this staff member?',
+      variant: 'danger',
+    })
+    if (!confirmed) {
       return
     }
 
@@ -385,7 +411,7 @@ const SettingsPage = () => {
       const data = await api.users.getAll()
       setStaff(data)
       
-      alert('Staff member deleted successfully!')
+      toast.success('Staff member deleted successfully!')
     } catch (err) {
       setStaffError(err.message || 'Failed to delete staff member')
       console.error('Error deleting staff:', err)
@@ -394,37 +420,49 @@ const SettingsPage = () => {
 
   const handleClearAllData = async () => {
     // Triple confirmation for safety
-    const confirm1 = window.confirm(
-      '⚠️ WARNING: This will delete ALL data except users and Beds24 token data.\n\n' +
-      'This includes:\n' +
-      '- All reservations\n' +
-      '- All guests\n' +
-      '- All rooms and room types\n' +
-      '- All invoices\n' +
-      '- All expenses\n' +
-      '- All maintenance requests\n' +
-      '- All housekeeping records\n' +
-      '- All audit logs\n\n' +
-      'This action CANNOT be undone!\n\n' +
-      'Are you absolutely sure you want to continue?'
-    )
+    const confirm1 = await confirmation({
+      title: '⚠️ WARNING: Clear All Data',
+      message: 'This will delete ALL data except users and Beds24 token data.\n\n' +
+        'This includes:\n' +
+        '- All reservations\n' +
+        '- All guests\n' +
+        '- All rooms and room types\n' +
+        '- All invoices\n' +
+        '- All expenses\n' +
+        '- All maintenance requests\n' +
+        '- All housekeeping records\n' +
+        '- All audit logs\n\n' +
+        'This action CANNOT be undone!\n\n' +
+        'Are you absolutely sure you want to continue?',
+      variant: 'danger',
+    })
     
     if (!confirm1) return
 
-    const confirm2 = window.confirm(
-      'This is your SECOND confirmation.\n\n' +
-      'You are about to permanently delete all operational data.\n\n' +
-      'Type "DELETE ALL" in the next prompt to confirm.'
-    )
+    const confirm2 = await confirmation({
+      title: 'Second Confirmation',
+      message: 'This is your SECOND confirmation.\n\n' +
+        'You are about to permanently delete all operational data.\n\n' +
+        'Type "DELETE ALL" in the next prompt to confirm.',
+      variant: 'danger',
+    })
     
     if (!confirm2) return
 
-    const confirmText = window.prompt(
-      'Type "DELETE ALL" (in all caps) to confirm this action:'
-    )
+    const confirmText = await prompt({
+      title: 'Final Confirmation',
+      message: 'Type "DELETE ALL" (in all caps) to confirm this action:',
+      placeholder: 'DELETE ALL',
+      validation: (value) => {
+        if (value !== 'DELETE ALL') {
+          return 'Confirmation text must be exactly "DELETE ALL"'
+        }
+        return true
+      },
+    })
     
-    if (confirmText !== 'DELETE ALL') {
-      alert('Confirmation text did not match. Operation cancelled.')
+    if (!confirmText || confirmText !== 'DELETE ALL') {
+      toast.error('Confirmation text did not match. Operation cancelled.')
       return
     }
 
@@ -434,14 +472,14 @@ const SettingsPage = () => {
       
       await api.settings.clearAllData()
       
-      alert('All data cleared successfully! Users and Beds24 configuration have been preserved.')
+      toast.success('All data cleared successfully! Users and Beds24 configuration have been preserved.')
       
       // Refresh the page to show empty state
       window.location.reload()
     } catch (err) {
       setError(err.message || 'Failed to clear data')
       console.error('Error clearing data:', err)
-      alert(`Failed to clear data: ${err.message || 'Unknown error'}`)
+      toast.error(`Failed to clear data: ${err.message || 'Unknown error'}`)
     } finally {
       setClearingData(false)
     }

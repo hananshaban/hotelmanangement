@@ -5,11 +5,15 @@ import useRoomTypesStore from '../store/roomTypesStore'
 import useGuestsStore from '../store/guestsStore'
 import GuestSelect from './GuestSelect'
 import Modal from './Modal'
+import { useToast } from '../hooks/useToast'
+import { useConfirmation } from '../hooks/useConfirmation'
 
 const BookingTimeline = () => {
   const { reservations, fetchReservations, createReservation } = useReservationsStore()
   const { roomTypes, fetchRoomTypes } = useRoomTypesStore()
   const { guests, fetchGuests } = useGuestsStore()
+  const toast = useToast()
+  const confirmation = useConfirmation()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -106,7 +110,7 @@ const BookingTimeline = () => {
 
   const handleCreateReservation = async () => {
     if (!newReservation.guestId || !newReservation.roomTypeId || !newReservation.checkIn || !newReservation.checkOut) {
-      alert('Please fill in all required fields')
+      toast.error('Please fill in all required fields')
       return
     }
 
@@ -114,7 +118,7 @@ const BookingTimeline = () => {
     const checkOutDate = parseISO(newReservation.checkOut)
 
     if (checkOutDate <= checkInDate) {
-      alert('Check-out date must be after check-in date')
+      toast.error('Check-out date must be after check-in date')
       return
     }
 
@@ -122,13 +126,13 @@ const BookingTimeline = () => {
     const guest2 = newReservation.guest2Id ? guests.find((g) => String(g.id) === String(newReservation.guest2Id)) : null
 
     if (!guest) {
-      alert('Guest not found')
+      toast.error('Guest not found')
       return
     }
 
     const roomType = roomTypes.find((rt) => rt.id === newReservation.roomTypeId)
     if (!roomType) {
-      alert('Room type not found')
+      toast.error('Room type not found')
       return
     }
 
@@ -150,7 +154,12 @@ const BookingTimeline = () => {
     
     let force = false
     if (totalReservedUnits + requestedUnits > roomType.qty) {
-      if (!confirm('Not enough available units during this period. Continue anyway?')) {
+      const confirmed = await confirmation({
+        title: 'Not Enough Available Units',
+        message: 'Not enough available units during this period. Continue anyway?',
+        variant: 'warning',
+      })
+      if (!confirmed) {
         return
       }
       force = true
@@ -177,8 +186,9 @@ const BookingTimeline = () => {
       setIsModalOpen(false)
       setNewReservation({ guestId: '', guest2Id: '', roomTypeId: '', unitIndex: null, checkIn: '', checkOut: '', status: 'Confirmed', unitsRequested: 1 })
       setSelectedSlot(null)
+      toast.success('Reservation created successfully!')
     } catch (error) {
-      alert(error.message || 'Failed to create reservation')
+      toast.error(error.message || 'Failed to create reservation')
     }
   }
 

@@ -129,6 +129,7 @@ export class ReservationPushService {
           {
             method: 'PUT',
             body: updateRequest,
+            idempotencyKey: options.idempotencyKey,
           }
         );
         beds24BookingId = updated.id!;
@@ -138,6 +139,7 @@ export class ReservationPushService {
         const created = await this.client.makeRequest<Beds24Booking>('/bookings', {
           method: 'POST',
           body: createRequest,
+          idempotencyKey: options.idempotencyKey,
         });
         beds24BookingId = created.id!;
 
@@ -223,6 +225,7 @@ export class ReservationPushService {
             id: parseInt(reservation.beds24_booking_id, 10),
             status: 'cancelled',
           },
+          idempotencyKey: options.idempotencyKey,
         }
       );
 

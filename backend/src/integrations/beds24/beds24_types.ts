@@ -167,10 +167,11 @@ export interface Beds24ApiResponse<T = any> {
 }
 
 export interface Beds24RequestOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   headers?: Record<string, string>;
   body?: any;
   query?: Record<string, string | number | boolean | (string | number)[] | undefined>;
+  idempotencyKey?: string; // Idempotency key for deduplication
 }
 
 // ============================================================================

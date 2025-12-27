@@ -4,6 +4,7 @@ import useExpensesStore from '../store/expensesStore'
 import Modal from '../components/Modal'
 import SearchInput from '../components/SearchInput'
 import FilterSelect from '../components/FilterSelect'
+import { useToast } from '../hooks/useToast'
 
 const ExpensesPage = () => {
   const {
@@ -13,6 +14,7 @@ const ExpensesPage = () => {
     fetchExpenses,
     createExpense,
   } = useExpensesStore()
+  const toast = useToast()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
@@ -97,13 +99,13 @@ const ExpensesPage = () => {
 
   const handleAddExpense = async () => {
     if (!newExpense.category || !newExpense.amount) {
-      alert('Please fill in category and amount')
+      toast.error('Please fill in category and amount')
       return
     }
 
     const amount = parseFloat(newExpense.amount)
     if (isNaN(amount) || amount <= 0) {
-      alert('Please enter a valid amount')
+      toast.error('Please enter a valid amount')
       return
     }
 
@@ -122,8 +124,9 @@ const ExpensesPage = () => {
         date: format(new Date(), 'yyyy-MM-dd'),
         notes: '',
       })
+      toast.success('Expense created successfully!')
     } catch (error) {
-      alert(error.message || 'Failed to create expense')
+      toast.error(error.message || 'Failed to create expense')
     }
   }
 

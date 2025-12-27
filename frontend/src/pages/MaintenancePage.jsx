@@ -6,6 +6,7 @@ import StatusBadge from '../components/StatusBadge'
 import Modal from '../components/Modal'
 import SearchInput from '../components/SearchInput'
 import FilterSelect from '../components/FilterSelect'
+import { useToast } from '../hooks/useToast'
 
 const MaintenancePage = () => {
   const { rooms, fetchRooms } = useRoomsStore()
@@ -86,15 +87,17 @@ const MaintenancePage = () => {
     return sortOrder === 'asc' ? <span>↑</span> : <span>↓</span>
   }
 
+  const toast = useToast()
+
   const handleCreateRequest = async () => {
     if (!newRequest.roomNumber || !newRequest.title || !newRequest.description) {
-      alert('Please fill in all required fields')
+      toast.error('Please fill in all required fields')
       return
     }
 
     const room = rooms.find((r) => r.roomNumber === newRequest.roomNumber)
     if (!room) {
-      alert('Room not found')
+      toast.error('Room not found')
       return
     }
 
@@ -114,16 +117,18 @@ const MaintenancePage = () => {
         description: '',
         priority: 'Medium',
       })
+      toast.success('Maintenance request created successfully!')
     } catch (error) {
-      alert(error.message || 'Failed to create maintenance request')
+      toast.error(error.message || 'Failed to create maintenance request')
     }
   }
 
   const handleStatusChange = async (requestId, newStatus) => {
     try {
       await updateMaintenanceRequest(requestId, { status: newStatus })
+      toast.success('Maintenance request status updated successfully!')
     } catch (error) {
-      alert(error.message || 'Failed to update maintenance request status')
+      toast.error(error.message || 'Failed to update maintenance request status')
     }
   }
 

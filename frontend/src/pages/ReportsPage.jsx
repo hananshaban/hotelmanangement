@@ -4,12 +4,14 @@ import useReservationsStore from '../store/reservationsStore'
 import useGuestsStore from '../store/guestsStore'
 import useInvoicesStore from '../store/invoicesStore'
 import useExpensesStore from '../store/expensesStore'
+import { useToast } from '../hooks/useToast'
 
 const ReportsPage = () => {
   const { reservations, fetchReservations } = useReservationsStore()
   const { guests, fetchGuests } = useGuestsStore()
   const { invoices, fetchInvoices } = useInvoicesStore()
   const { expenses, fetchExpenses } = useExpensesStore()
+  const toast = useToast()
 
   // Fetch all data on mount
   useEffect(() => {
@@ -23,14 +25,14 @@ const ReportsPage = () => {
     console.log('Exporting CSV:', { dataLength: data?.length, filename })
     
     if (!data || data.length === 0) {
-      alert('No data to export')
+      toast.error('No data to export')
       return
     }
 
     try {
       const headers = Object.keys(data[0])
       if (headers.length === 0) {
-        alert('No data columns found')
+        toast.error('No data columns found')
         return
       }
 
@@ -83,7 +85,7 @@ const ReportsPage = () => {
       }, 200)
     } catch (error) {
       console.error('Export error:', error)
-      alert('Failed to export data: ' + error.message)
+      toast.error('Failed to export data: ' + error.message)
     }
   }
 
@@ -91,7 +93,7 @@ const ReportsPage = () => {
     console.log('Exporting JSON:', { dataLength: data?.length, filename })
     
     if (!data || data.length === 0) {
-      alert('No data to export')
+      toast.error('No data to export')
       return
     }
 
@@ -121,7 +123,7 @@ const ReportsPage = () => {
       }, 200)
     } catch (error) {
       console.error('Export error:', error)
-      alert('Failed to export data: ' + error.message)
+      toast.error('Failed to export data: ' + error.message)
     }
   }
 
@@ -129,7 +131,7 @@ const ReportsPage = () => {
     console.log('Export reservations clicked:', { exportFormat, reservationsCount: reservations?.length })
     
     if (!reservations || reservations.length === 0) {
-      alert('No reservations to export. Please wait for data to load.')
+      toast.error('No reservations to export. Please wait for data to load.')
       return
     }
 
@@ -154,7 +156,7 @@ const ReportsPage = () => {
       }
     } catch (error) {
       console.error('Export reservations error:', error)
-      alert('Failed to export reservations: ' + error.message)
+      toast.error('Failed to export reservations: ' + error.message)
     }
   }
 
@@ -162,7 +164,7 @@ const ReportsPage = () => {
     console.log('Export guests clicked:', { exportFormat, guestsCount: guests?.length })
     
     if (!guests || guests.length === 0) {
-      alert('No guests to export. Please wait for data to load.')
+      toast.error('No guests to export. Please wait for data to load.')
       return
     }
 
@@ -184,7 +186,7 @@ const ReportsPage = () => {
       }
     } catch (error) {
       console.error('Export guests error:', error)
-      alert('Failed to export guests: ' + error.message)
+      toast.error('Failed to export guests: ' + error.message)
     }
   }
 
@@ -192,7 +194,7 @@ const ReportsPage = () => {
     console.log('Export invoices clicked:', { exportFormat, invoicesCount: invoices?.length })
     
     if (!invoices || invoices.length === 0) {
-      alert('No invoices to export. Please wait for data to load.')
+      toast.error('No invoices to export. Please wait for data to load.')
       return
     }
 
@@ -216,7 +218,7 @@ const ReportsPage = () => {
       }
     } catch (error) {
       console.error('Export invoices error:', error)
-      alert('Failed to export invoices: ' + error.message)
+      toast.error('Failed to export invoices: ' + error.message)
     }
   }
 
@@ -224,7 +226,7 @@ const ReportsPage = () => {
     console.log('Export expenses clicked:', { exportFormat, expensesCount: expenses?.length })
     
     if (!expenses || expenses.length === 0) {
-      alert('No expenses to export. Please wait for data to load.')
+      toast.error('No expenses to export. Please wait for data to load.')
       return
     }
 
@@ -245,7 +247,7 @@ const ReportsPage = () => {
       }
     } catch (error) {
       console.error('Export expenses error:', error)
-      alert('Failed to export expenses: ' + error.message)
+      toast.error('Failed to export expenses: ' + error.message)
     }
   }
 

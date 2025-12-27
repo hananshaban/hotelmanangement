@@ -18,6 +18,7 @@ export interface SyncOptions {
   retryOnFailure?: boolean;
   maxRetries?: number;
   priority?: number; // For queue priority
+  idempotencyKey?: string; // Idempotency key for API calls
 }
 
 export interface BatchSyncResult {

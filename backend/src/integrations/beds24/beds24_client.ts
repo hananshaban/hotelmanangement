@@ -342,6 +342,11 @@ export class Beds24Client {
       headers['Content-Type'] = 'application/json';
     }
 
+    // Add idempotency key header if provided
+    if (options.idempotencyKey) {
+      headers['X-Idempotency-Key'] = options.idempotencyKey;
+    }
+
     // Add authentication header if required
     if (requireAuth) {
       const accessToken = await this.getAccessToken();

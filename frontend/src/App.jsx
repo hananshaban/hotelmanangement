@@ -20,6 +20,9 @@ import MainLayout from './layouts/MainLayout'
 import useStore from './store/useStore'
 import useAuthStore from './store/authStore'
 import { parseISO, isToday, isPast } from 'date-fns'
+import ToastContainer from './components/ToastContainer'
+import ConfirmationDialog from './components/ConfirmationDialog'
+import PromptDialog from './components/PromptDialog'
 
 function App() {
   const { isAuthenticated, initialize, ensureValidToken } = useAuthStore()
@@ -124,8 +127,12 @@ function App() {
   const { logout } = useAuthStore()
 
   return (
-    <Router>
-      <Routes>
+    <>
+      <ToastContainer />
+      <ConfirmationDialog />
+      <PromptDialog />
+      <Router>
+        <Routes>
         <Route
           path="/login"
           element={
@@ -167,6 +174,7 @@ function App() {
         />
       </Routes>
     </Router>
+    </>
   )
 }
 
