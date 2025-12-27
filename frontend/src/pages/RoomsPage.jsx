@@ -7,12 +7,14 @@ import Modal from '../components/Modal'
 import useRoomTypesStore from '../store/roomTypesStore'
 import useRoomsStore from '../store/roomsStore'
 import { api } from '../utils/api'
+import { useToast } from '../hooks/useToast'
 
 const RoomsPage = () => {
   const { roomTypes, fetchRoomTypes, isLoading: roomTypesLoading } = useRoomTypesStore()
   const { housekeeping, fetchHousekeeping, updateHousekeepingStatus, isLoading: housekeepingLoading } = useRoomsStore()
   const [staff, setStaff] = useState([])
   const [staffLoading, setStaffLoading] = useState(false)
+  const toast = useToast()
 
   // Fetch room types, housekeeping, and staff on mount
   useEffect(() => {
@@ -346,7 +348,7 @@ const RoomsPage = () => {
                                 await updateHousekeepingStatus(room.id, hk.status, e.target.value)
                                 await fetchHousekeeping() // Refresh after update
                               } catch (error) {
-                                alert(error.message || 'Failed to update housekeeping')
+                                toast.error(error.message || 'Failed to update housekeeping')
                               }
                             }}
                             className="input text-sm"
@@ -375,7 +377,7 @@ const RoomsPage = () => {
                                     await updateHousekeepingStatus(room.id, 'Clean', hk.assignedStaffId || hk.assignedStaff)
                                     await fetchHousekeeping() // Refresh after update
                                   } catch (error) {
-                                    alert(error.message || 'Failed to update housekeeping')
+                                    toast.error(error.message || 'Failed to update housekeeping')
                                   }
                                 }}
                                 className="text-green-600 hover:text-green-900"
@@ -390,7 +392,7 @@ const RoomsPage = () => {
                                     await updateHousekeepingStatus(room.id, 'Dirty', hk.assignedStaffId || hk.assignedStaff)
                                     await fetchHousekeeping() // Refresh after update
                                   } catch (error) {
-                                    alert(error.message || 'Failed to update housekeeping')
+                                    toast.error(error.message || 'Failed to update housekeeping')
                                   }
                                 }}
                                 className="text-red-600 hover:text-red-900"
@@ -405,7 +407,7 @@ const RoomsPage = () => {
                                     await updateHousekeepingStatus(room.id, 'In Progress', hk.assignedStaffId || hk.assignedStaff)
                                     await fetchHousekeeping() // Refresh after update
                                   } catch (error) {
-                                    alert(error.message || 'Failed to update housekeeping')
+                                    toast.error(error.message || 'Failed to update housekeeping')
                                   }
                                 }}
                                 className="text-yellow-600 hover:text-yellow-900"

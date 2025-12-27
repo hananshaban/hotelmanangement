@@ -6,11 +6,15 @@ import GuestSelect from '../components/GuestSelect'
 import useReservationsStore from '../store/reservationsStore'
 import useRoomsStore from '../store/roomsStore'
 import useGuestsStore from '../store/guestsStore'
+import { useToast } from '../hooks/useToast'
+import { useConfirmation } from '../hooks/useConfirmation'
 
 const CalendarPage = () => {
   const { reservations, fetchReservations, createReservation } = useReservationsStore()
   const { rooms, fetchRooms } = useRoomsStore()
   const { guests, fetchGuests } = useGuestsStore()
+  const toast = useToast()
+  const confirmation = useConfirmation()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedReservation, setSelectedReservation] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -57,7 +61,7 @@ const CalendarPage = () => {
   const handleCreateReservation = async () => {
     // Validation
     if (!newReservation.guestId || !newReservation.roomNumber || !newReservation.checkIn || !newReservation.checkOut) {
-      alert('Please fill in all required fields')
+      toast.error('Please fill in all required fields')
       return
     }
 
@@ -65,7 +69,7 @@ const CalendarPage = () => {
     const checkOut = parseISO(newReservation.checkOut)
 
     if (checkOut <= checkIn) {
-      alert('Check-out date must be after check-in date')
+      toast.error('Check-out date must be after check-in date')
       return
     }
 
@@ -75,18 +79,23 @@ const CalendarPage = () => {
     const room = rooms.find((r) => r.roomNumber === newReservation.roomNumber)
 
     if (!guest) {
-      alert('Primary guest not found')
+      toast.error('Primary guest not found')
       return
     }
 
     if (!room) {
-      alert('Room not found')
+      toast.error('Room not found')
       return
     }
 
     // Validate second guest for double rooms
     if (room.type === 'Double' && !newReservation.guest2Id) {
-      if (!confirm('Double room selected. Do you want to proceed with only one guest?')) {
+      const confirmed = await confirmation({
+        title: 'Double Room Selected',
+        message: 'Double room selected. Do you want to proceed with only one guest?',
+        variant: 'warning',
+      })
+      if (!confirmed) {
         return
       }
     }
@@ -105,7 +114,12 @@ const CalendarPage = () => {
 
     let force = false
     if (hasOverlap) {
-      if (!confirm('Room already has a reservation during this period. Continue anyway?')) {
+      const confirmed = await confirmation({
+        title: 'Overlapping Reservation',
+        message: 'Room already has a reservation during this period. Continue anyway?',
+        variant: 'warning',
+      })
+      if (!confirmed) {
         return
       }
       force = true
@@ -131,8 +145,9 @@ const CalendarPage = () => {
         checkOut: '',
         status: 'Confirmed',
       })
+      toast.success('Reservation created successfully!')
     } catch (error) {
-      alert(error.message || 'Failed to create reservation')
+      toast.error(error.message || 'Failed to create reservation')
     }
   }
 

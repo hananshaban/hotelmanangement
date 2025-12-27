@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import SearchInput from '../components/SearchInput'
 import Modal from '../components/Modal'
 import useGuestsStore from '../store/guestsStore'
+import { useToast } from '../hooks/useToast'
 
 const GuestsPage = () => {
   const {
@@ -12,6 +13,7 @@ const GuestsPage = () => {
     fetchGuests,
     createGuest,
   } = useGuestsStore()
+  const toast = useToast()
   const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
   const [sortBy, setSortBy] = useState('id')
@@ -75,7 +77,7 @@ const GuestsPage = () => {
   const handleAddGuest = async () => {
     // Validation
     if (!newGuest.name) {
-      alert('Please fill in the name field')
+      toast.error('Please fill in the name field')
       return
     }
 
@@ -83,7 +85,7 @@ const GuestsPage = () => {
     if (newGuest.email) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(newGuest.email)) {
-        alert('Please enter a valid email address')
+        toast.error('Please enter a valid email address')
         return
       }
     }
@@ -98,8 +100,9 @@ const GuestsPage = () => {
         pastStays: 0,
         notes: '',
       })
+      toast.success('Guest created successfully!')
     } catch (error) {
-      alert(error.message || 'Failed to create guest')
+      toast.error(error.message || 'Failed to create guest')
     }
   }
 

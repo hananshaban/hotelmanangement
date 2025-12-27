@@ -2,13 +2,11 @@
  * Sync hooks - Queue Beds24 sync jobs when PMS data changes
  * 
  * These functions should be called after successful database operations
+ * Now uses RabbitMQ for event-driven processing
  */
 
-import {
-  queueReservationSync,
-  queueAvailabilitySync,
-  queueRatesSync,
-} from '../queue/sync_jobs.js';
+import { publishOutbound } from '../queue/rabbitmq_publisher.js';
+import { createChannelEvent } from '../repositories/channel_event_repository.js';
 import db from '../../../config/database.js';
 
 /**
@@ -21,6 +19,19 @@ async function isSyncEnabled(): Promise<boolean> {
     .first();
 
   return config?.sync_enabled === true && config?.push_sync_enabled === true;
+}
+
+/**
+ * Generate idempotency key for outbound event
+ */
+function generateIdempotencyKey(
+  entityType: string,
+  entityId: string,
+  action: string,
+  timestamp?: number
+): string {
+  const ts = timestamp || Date.now();
+  return `pms-${entityType}-${entityId}-${action}-${ts}`;
 }
 
 /**
@@ -46,14 +57,45 @@ export async function queueReservationSyncHook(
       return; // Skip sync for Beds24-originated reservations
     }
 
-    // Queue sync job (fire and forget)
-    queueReservationSync(reservationId, action).catch((error) => {
-      console.error(`Failed to queue reservation sync for ${reservationId}:`, error);
+    // Generate idempotency key
+    const idempotencyKey = generateIdempotencyKey('booking', reservationId, action);
+
+    // Persist event to channel_events
+    const channelEvent = await createChannelEvent({
+      direction: 'outbound',
+      source: 'pms',
+      event_type: `booking.${action}`,
+      entity_type: 'booking',
+      entity_internal_id: reservationId,
+      entity_external_id: reservation.beds24_booking_id || null,
+      idempotency_key: idempotencyKey,
+      payload: {
+        reservationId,
+        action,
+        beds24BookingId: reservation.beds24_booking_id,
+      },
+    });
+
+    // Publish to RabbitMQ (fire and forget)
+    publishOutbound(
+      `booking.${action}`,
+      {
+        channelEventId: channelEvent.id,
+        reservationId,
+        action,
+        beds24BookingId: reservation.beds24_booking_id,
+      },
+      {
+        messageId: channelEvent.id,
+        priority: 10, // High priority for bookings
+      }
+    ).catch((error) => {
+      console.error(`[SyncHook] Failed to publish reservation sync for ${reservationId}:`, error);
       // Don't throw - sync failures shouldn't break the main operation
     });
   } catch (error) {
     // Log but don't throw - sync is non-blocking
-    console.error(`Error in reservation sync hook for ${reservationId}:`, error);
+    console.error(`[SyncHook] Error in reservation sync hook for ${reservationId}:`, error);
   }
 }
 
@@ -76,11 +118,10 @@ export async function queueReservationCancelHook(reservationId: string): Promise
       return; // Skip if from Beds24 or not synced
     }
 
-    queueReservationSync(reservationId, 'cancel').catch((error) => {
-      console.error(`Failed to queue reservation cancel sync for ${reservationId}:`, error);
-    });
+    // Use queueReservationSyncHook with cancel action
+    await queueReservationSyncHook(reservationId, 'cancel');
   } catch (error) {
-    console.error(`Error in reservation cancel sync hook for ${reservationId}:`, error);
+    console.error(`[SyncHook] Error in reservation cancel sync hook for ${reservationId}:`, error);
   }
 }
 
@@ -100,12 +141,41 @@ export async function queueRoomAvailabilitySyncHook(roomId: string): Promise<voi
       return; // Room not mapped to Beds24, skip
     }
 
-    // Queue availability sync (fire and forget)
-    queueAvailabilitySync(roomId, false).catch((error) => {
-      console.error(`Failed to queue availability sync for room ${roomId}:`, error);
+    // Generate idempotency key
+    const idempotencyKey = generateIdempotencyKey('availability', roomId, 'update');
+
+    // Persist event to channel_events
+    const channelEvent = await createChannelEvent({
+      direction: 'outbound',
+      source: 'pms',
+      event_type: 'availability.update',
+      entity_type: 'availability',
+      entity_internal_id: roomId,
+      entity_external_id: room.beds24_room_id,
+      idempotency_key: idempotencyKey,
+      payload: {
+        roomId,
+        beds24RoomId: room.beds24_room_id,
+      },
+    });
+
+    // Publish to RabbitMQ (fire and forget)
+    publishOutbound(
+      'availability.update',
+      {
+        channelEventId: channelEvent.id,
+        roomId,
+        beds24RoomId: room.beds24_room_id,
+      },
+      {
+        messageId: channelEvent.id,
+        priority: 5, // Medium priority for availability
+      }
+    ).catch((error) => {
+      console.error(`[SyncHook] Failed to publish availability sync for room ${roomId}:`, error);
     });
   } catch (error) {
-    console.error(`Error in room availability sync hook for ${roomId}:`, error);
+    console.error(`[SyncHook] Error in room availability sync hook for ${roomId}:`, error);
   }
 }
 
@@ -124,11 +194,43 @@ export async function queueRoomRatesSyncHook(roomId: string): Promise<void> {
       return;
     }
 
-    queueRatesSync(roomId).catch((error) => {
-      console.error(`Failed to queue rates sync for room ${roomId}:`, error);
+    // Generate idempotency key
+    const idempotencyKey = generateIdempotencyKey('rate', roomId, 'update');
+
+    // Persist event to channel_events
+    const channelEvent = await createChannelEvent({
+      direction: 'outbound',
+      source: 'pms',
+      event_type: 'rate.update',
+      entity_type: 'rate',
+      entity_internal_id: roomId,
+      entity_external_id: room.beds24_room_id,
+      idempotency_key: idempotencyKey,
+      payload: {
+        roomId,
+        beds24RoomId: room.beds24_room_id,
+        pricePerNight: room.price_per_night,
+      },
+    });
+
+    // Publish to RabbitMQ (fire and forget)
+    publishOutbound(
+      'rate.update',
+      {
+        channelEventId: channelEvent.id,
+        roomId,
+        beds24RoomId: room.beds24_room_id,
+        pricePerNight: room.price_per_night,
+      },
+      {
+        messageId: channelEvent.id,
+        priority: 3, // Low priority for rates
+      }
+    ).catch((error) => {
+      console.error(`[SyncHook] Failed to publish rates sync for room ${roomId}:`, error);
     });
   } catch (error) {
-    console.error(`Error in room rates sync hook for ${roomId}:`, error);
+    console.error(`[SyncHook] Error in room rates sync hook for ${roomId}:`, error);
   }
 }
 

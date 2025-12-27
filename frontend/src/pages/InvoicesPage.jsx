@@ -5,6 +5,8 @@ import StatusBadge from '../components/StatusBadge'
 import SearchInput from '../components/SearchInput'
 import FilterSelect from '../components/FilterSelect'
 import useInvoicesStore from '../store/invoicesStore'
+import { useToast } from '../hooks/useToast'
+import { useConfirmation } from '../hooks/useConfirmation'
 
 const InvoicesPage = () => {
   const {
@@ -14,6 +16,8 @@ const InvoicesPage = () => {
     fetchInvoices,
     updateInvoice,
   } = useInvoicesStore()
+  const toast = useToast()
+  const confirmation = useConfirmation()
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState(null)
   const [paymentMethod, setPaymentMethod] = useState('')
@@ -78,11 +82,17 @@ const InvoicesPage = () => {
       setPaymentMethod(invoice?.paymentMethod || '')
       setPaymentModalOpen(true)
     } else {
-      if (window.confirm(`Are you sure you want to mark this invoice as ${newStatus}?`)) {
+      const confirmed = await confirmation({
+        title: 'Change Invoice Status',
+        message: `Are you sure you want to mark this invoice as ${newStatus}?`,
+        variant: 'warning',
+      })
+      if (confirmed) {
         try {
           await updateInvoice(invoiceId, { status: newStatus })
+          toast.success('Invoice status updated successfully!')
         } catch (error) {
-          alert(error.message || 'Failed to update invoice status')
+          toast.error(error.message || 'Failed to update invoice status')
         }
       }
     }
@@ -90,7 +100,7 @@ const InvoicesPage = () => {
 
   const handleMarkAsPaid = async () => {
     if (!paymentMethod) {
-      alert('Please select a payment method')
+      toast.error('Please select a payment method')
       return
     }
     
@@ -102,8 +112,9 @@ const InvoicesPage = () => {
       setPaymentModalOpen(false)
       setSelectedInvoice(null)
       setPaymentMethod('')
+      toast.success('Invoice marked as paid successfully!')
     } catch (error) {
-      alert(error.message || 'Failed to update invoice')
+      toast.error(error.message || 'Failed to update invoice')
     }
   }
 

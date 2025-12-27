@@ -9,11 +9,15 @@ import useReservationsStore from '../store/reservationsStore'
 import useRoomsStore from '../store/roomsStore'
 import useGuestsStore from '../store/guestsStore'
 import useInvoicesStore from '../store/invoicesStore'
+import { useToast } from '../hooks/useToast'
+import { useConfirmation } from '../hooks/useConfirmation'
 
 const ReservationsPage = () => {
   const { rooms } = useRoomsStore()
   const { guests, fetchGuests } = useGuestsStore()
   const { createInvoice } = useInvoicesStore()
+  const toast = useToast()
+  const confirmation = useConfirmation()
   const {
     reservations,
     loading: reservationsLoading,
@@ -84,7 +88,7 @@ const ReservationsPage = () => {
     )
 
     if (!guest) {
-      alert('Guest not found. Please ensure the guest exists in the system.')
+      toast.error('Guest not found. Please ensure the guest exists in the system.')
       return
     }
 
@@ -102,16 +106,16 @@ const ReservationsPage = () => {
         notes: `Invoice for reservation ${reservation.id}`,
       })
 
-      alert(`Invoice created successfully for reservation ${reservation.id}`)
+      toast.success(`Invoice created successfully for reservation ${reservation.id}`)
     } catch (error) {
-      alert(error.message || 'Failed to create invoice')
+      toast.error(error.message || 'Failed to create invoice')
     }
   }
 
   const handleAddReservation = async () => {
     // Validation
     if (!newReservation.guestId || !newReservation.roomNumber || !newReservation.checkIn || !newReservation.checkOut) {
-      alert('Please fill in all required fields')
+      toast.error('Please fill in all required fields')
       return
     }
 
@@ -119,7 +123,7 @@ const ReservationsPage = () => {
     const checkOut = parseISO(newReservation.checkOut)
 
     if (checkOut <= checkIn) {
-      alert('Check-out date must be after check-in date')
+      toast.error('Check-out date must be after check-in date')
       return
     }
 
@@ -129,18 +133,23 @@ const ReservationsPage = () => {
     const room = rooms.find((r) => r.roomNumber === newReservation.roomNumber)
 
     if (!guest) {
-      alert('Primary guest not found')
+      toast.error('Primary guest not found')
       return
     }
 
     if (!room) {
-      alert('Room not found')
+      toast.error('Room not found')
       return
     }
 
     // Validate second guest for double rooms
     if (room.type === 'Double' && !newReservation.guest2Id) {
-      if (!confirm('Double room selected. Do you want to proceed with only one guest?')) {
+      const confirmed = await confirmation({
+        title: 'Double Room Selected',
+        message: 'Double room selected. Do you want to proceed with only one guest?',
+        variant: 'warning',
+      })
+      if (!confirmed) {
         return
       }
     }
@@ -159,7 +168,12 @@ const ReservationsPage = () => {
 
     let force = false
     if (hasOverlap) {
-      if (!confirm('Room already has a reservation during this period. Continue anyway?')) {
+      const confirmed = await confirmation({
+        title: 'Overlapping Reservation',
+        message: 'Room already has a reservation during this period. Continue anyway?',
+        variant: 'warning',
+      })
+      if (!confirmed) {
         return
       }
       force = true
@@ -186,9 +200,9 @@ const ReservationsPage = () => {
         checkOut: '',
         status: 'Confirmed',
       })
-      alert('Reservation created successfully!')
+      toast.success('Reservation created successfully!')
     } catch (error) {
-      alert(error.message || 'Failed to create reservation')
+      toast.error(error.message || 'Failed to create reservation')
     }
   }
 

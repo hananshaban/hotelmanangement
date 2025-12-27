@@ -1,15 +1,8 @@
 import type { Request, Response } from 'express';
 import type { Beds24Booking } from '../beds24_types.js';
-import {
-  validateWebhookSignature,
-  isWebhookEventProcessed,
-  storeWebhookEvent,
-  markWebhookEventProcessed,
-} from './webhook_validator.js';
-import { handleBookingCreated } from './handlers/booking_created_handler.js';
-import { handleBookingModified } from './handlers/booking_modified_handler.js';
-import { handleBookingCancelled } from './handlers/booking_cancelled_handler.js';
-import { handleBookingDeleted } from './handlers/booking_deleted_handler.js';
+import { validateWebhookSignature } from './webhook_validator.js';
+import { createChannelEvent, findChannelEventByIdempotencyKey } from '../repositories/channel_event_repository.js';
+import { publishInbound } from '../queue/rabbitmq_publisher.js';
 
 /**
  * Webhook event types from Beds24
@@ -27,35 +20,8 @@ interface Beds24WebhookPayload {
 }
 
 /**
- * Process webhook event
- */
-async function processWebhookEvent(payload: Beds24WebhookPayload): Promise<{
-  success: boolean;
-  reservationId?: string;
-  error?: string;
-}> {
-  const { event, booking, eventId } = payload;
-
-  // Route to appropriate handler
-  switch (event) {
-    case 'booking.created':
-      return handleBookingCreated(booking);
-    case 'booking.modified':
-      return handleBookingModified(booking);
-    case 'booking.cancelled':
-      return handleBookingCancelled(booking);
-    case 'booking.deleted':
-      return handleBookingDeleted(booking);
-    default:
-      return {
-        success: false,
-        error: `Unknown event type: ${event}`,
-      };
-  }
-}
-
-/**
  * Webhook handler endpoint
+ * Enhanced to persist events to channel_events and publish to RabbitMQ
  */
 export async function webhookHandler(req: Request, res: Response): Promise<void> {
   try {
@@ -92,48 +58,62 @@ export async function webhookHandler(req: Request, res: Response): Promise<void>
       return;
     }
 
-    // Generate event ID if not provided
-    const eventId = payload.eventId || `beds24-${payload.booking.id}-${Date.now()}`;
+    // Generate idempotency key (use eventId if provided, otherwise generate)
+    const idempotencyKey = payload.eventId || `beds24-${payload.booking.id}-${payload.event}-${Date.now()}`;
 
-    // Check idempotency
-    const alreadyProcessed = await isWebhookEventProcessed(eventId);
-    if (alreadyProcessed) {
+    // Check idempotency using channel_events
+    const existingEvent = await findChannelEventByIdempotencyKey(idempotencyKey);
+    if (existingEvent) {
       // Already processed, return success
       res.status(200).json({
         success: true,
         message: 'Event already processed',
+        eventId: existingEvent.id,
       });
       return;
     }
 
-    // Store event for idempotency
-    await storeWebhookEvent(eventId, payload.event, payload);
+    // Persist event to channel_events (status: 'received')
+    const channelEvent = await createChannelEvent({
+      direction: 'inbound',
+      source: 'beds24',
+      event_type: payload.event,
+      entity_type: 'booking',
+      entity_external_id: payload.booking.id?.toString() || null,
+      idempotency_key: idempotencyKey,
+      payload: payload,
+    });
 
-    // Process event asynchronously (don't block response)
-    processWebhookEvent(payload)
-      .then(async (result) => {
-        await markWebhookEventProcessed(eventId, result.success, result.error);
-        
-        if (!result.success) {
-          console.error(`Webhook processing failed for event ${eventId}:`, result.error);
-        }
-      })
-      .catch(async (error) => {
-        await markWebhookEventProcessed(
-          eventId,
-          false,
-          error instanceof Error ? error.message : 'Unknown error'
-        );
-        console.error(`Webhook processing error for event ${eventId}:`, error);
-      });
+    // Publish to RabbitMQ inbound queue (non-blocking)
+    publishInbound(
+      payload.event,
+      {
+        channelEventId: channelEvent.id,
+        booking: payload.booking,
+        eventId: idempotencyKey,
+      },
+      {
+        messageId: channelEvent.id,
+        priority: 10, // High priority for bookings
+      }
+    ).catch((error) => {
+      console.error(`[Webhook] Failed to publish to RabbitMQ:`, error);
+      // Update event status to failed if publish fails
+      // Note: This will be handled by the worker retry logic
+    });
 
-    // Return immediately (async processing)
+    // Update event status to 'processing' (published to queue)
+    // This will be done by the worker, but we can mark it here for tracking
+    // Actually, let's leave it as 'received' and let the worker update it to 'processing'
+
+    // Return immediately (async processing via queue)
     res.status(200).json({
       success: true,
       message: 'Webhook received and queued for processing',
+      eventId: channelEvent.id,
     });
   } catch (error) {
-    console.error('Webhook handler error:', error);
+    console.error('[Webhook] Handler error:', error);
     res.status(500).json({
       error: 'Internal server error',
     });

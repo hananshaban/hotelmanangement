@@ -3,9 +3,13 @@ import useRoomTypesStore from '../store/roomTypesStore';
 import Modal from '../components/Modal';
 import SearchInput from '../components/SearchInput';
 import FilterSelect from '../components/FilterSelect';
+import { useToast } from '../hooks/useToast';
+import { useConfirmation } from '../hooks/useConfirmation';
 
 const RoomTypesPage = () => {
   const { roomTypes, addRoomType, updateRoomType, deleteRoomType, isLoading, initialize } = useRoomTypesStore();
+  const toast = useToast();
+  const confirmation = useConfirmation();
 
   useEffect(() => {
     initialize();
@@ -70,19 +74,19 @@ const RoomTypesPage = () => {
 
   const handleAddRoomType = async () => {
     if (!newRoomType.name || !newRoomType.room_type || !newRoomType.qty || !newRoomType.price_per_night) {
-      alert('Please fill in all required fields (Name, Room Type, Quantity, Price/Night)');
+      toast.error('Please fill in all required fields (Name, Room Type, Quantity, Price/Night)');
       return;
     }
 
     const qty = parseInt(newRoomType.qty);
     if (isNaN(qty) || qty < 1 || qty > 99) {
-      alert('Quantity must be between 1 and 99');
+      toast.error('Quantity must be between 1 and 99');
       return;
     }
 
     const price = parseFloat(newRoomType.price_per_night);
     if (isNaN(price) || price <= 0) {
-      alert('Please enter a valid price (must be a positive number)');
+      toast.error('Please enter a valid price (must be a positive number)');
       return;
     }
 
@@ -112,9 +116,9 @@ const RoomTypesPage = () => {
         unit_allocation: 'perBooking',
       });
       setFeatureInput('');
-      alert('Room type created successfully!');
+      toast.success('Room type created successfully!');
     } catch (error) {
-      alert(error.message || 'Failed to create room type');
+      toast.error(error.message || 'Failed to create room type');
     }
   };
 
@@ -141,13 +145,13 @@ const RoomTypesPage = () => {
 
     const qty = parseInt(newRoomType.qty);
     if (isNaN(qty) || qty < 1 || qty > 99) {
-      alert('Quantity must be between 1 and 99');
+      toast.error('Quantity must be between 1 and 99');
       return;
     }
 
     const price = parseFloat(newRoomType.price_per_night);
     if (isNaN(price) || price <= 0) {
-      alert('Please enter a valid price (must be a positive number)');
+      toast.error('Please enter a valid price (must be a positive number)');
       return;
     }
 
@@ -177,22 +181,27 @@ const RoomTypesPage = () => {
         description: '',
         unit_allocation: 'perBooking',
       });
-      alert('Room type updated successfully!');
+      toast.success('Room type updated successfully!');
     } catch (error) {
-      alert(error.message || 'Failed to update room type');
+      toast.error(error.message || 'Failed to update room type');
     }
   };
 
   const handleDeleteRoomType = async (id) => {
-    if (!confirm('Are you sure you want to delete this room type?')) {
+    const confirmed = await confirmation({
+      title: 'Delete Room Type',
+      message: 'Are you sure you want to delete this room type?',
+      variant: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
 
     try {
       await deleteRoomType(id);
-      alert('Room type deleted successfully!');
+      toast.success('Room type deleted successfully!');
     } catch (error) {
-      alert(error.message || 'Failed to delete room type');
+      toast.error(error.message || 'Failed to delete room type');
     }
   };
 

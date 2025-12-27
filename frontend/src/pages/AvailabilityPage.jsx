@@ -7,11 +7,13 @@ import { api } from '../utils/api'
 import StatusBadge from '../components/StatusBadge'
 import GuestSelect from '../components/GuestSelect'
 import Modal from '../components/Modal'
+import { useToast } from '../hooks/useToast'
 
 const AvailabilityPage = () => {
   const { createReservation } = useReservationsStore()
   const { getAvailableRoomTypes } = useRoomTypesStore()
   const { guests, fetchGuests } = useGuestsStore()
+  const toast = useToast()
   const [checkIn, setCheckIn] = useState(format(addDays(new Date(), 1), 'yyyy-MM-dd'))
   const [checkOut, setCheckOut] = useState(format(addDays(new Date(), 2), 'yyyy-MM-dd'))
   const [roomTypeFilter, setRoomTypeFilter] = useState('')
@@ -76,7 +78,7 @@ const AvailabilityPage = () => {
 
   const handleCreateReservation = async () => {
     if (!guestId) {
-      alert('Please select a guest')
+      toast.error('Please select a guest')
       return
     }
 
@@ -84,7 +86,7 @@ const AvailabilityPage = () => {
     const checkOutDate = parseISO(checkOut)
 
     if (checkOutDate <= checkInDate) {
-      alert('Check-out date must be after check-in date')
+      toast.error('Check-out date must be after check-in date')
       return
     }
 
@@ -92,12 +94,12 @@ const AvailabilityPage = () => {
     const guest2 = guest2Id ? guests.find((g) => String(g.id) === String(guest2Id)) : null
 
     if (!guest) {
-      alert('Guest not found')
+      toast.error('Guest not found')
       return
     }
 
     if (!selectedRoomType) {
-      alert('Room type not found')
+      toast.error('Room type not found')
       return
     }
 
@@ -116,7 +118,7 @@ const AvailabilityPage = () => {
       setGuestId('')
       setGuest2Id('')
       setSelectedRoomType(null)
-      alert(`Reservation created successfully for ${selectedRoomType.room_type_name}`)
+      toast.success(`Reservation created successfully for ${selectedRoomType.room_type_name}`)
       
       // Refresh availability
       const result = await api.roomTypes.getAvailable(checkIn, checkOut, {
@@ -126,7 +128,7 @@ const AvailabilityPage = () => {
       })
       setAvailableRoomTypes(result.room_types || [])
     } catch (error) {
-      alert(error.message || 'Failed to create reservation')
+      toast.error(error.message || 'Failed to create reservation')
     }
   }
 
