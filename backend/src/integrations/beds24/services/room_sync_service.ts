@@ -157,13 +157,20 @@ export class RoomSyncService {
       console.log(`Extracted ${roomMap.size} unique rooms from bookings`);
 
       // Convert to Beds24Room format
-      return Array.from(roomMap.values()).map((room) => ({
-        id: room.id,
-        propertyId: parseInt(beds24PropertyId, 10),
-        name: room.name || `Room ${room.id}`,
-        type: room.type,
-        maxGuests: room.maxGuests,
-      }));
+      return Array.from(roomMap.values()).map((room) => {
+        const beds24Room: Beds24Room = {
+          id: room.id,
+          propertyId: parseInt(beds24PropertyId, 10),
+          name: room.name || `Room ${room.id}`,
+        };
+        if (room.type) {
+          beds24Room.type = room.type;
+        }
+        if (room.maxGuests) {
+          beds24Room.maxGuests = room.maxGuests;
+        }
+        return beds24Room;
+      });
     } catch (error) {
       console.error('Failed to extract rooms from bookings:', error);
       return [];
@@ -280,7 +287,7 @@ export class RoomSyncService {
 
         // Map Beds24 roomType to PMS room_type
         const fullRoom = beds24Room as any;
-        const beds24RoomType = fullRoom.roomType || beds24Room.type || 'double';
+        const beds24RoomType = fullRoom.roomType || beds24Room.type;
         const validBeds24RoomTypes = [
           'single', 'double', 'twin', 'twinDouble', 'triple', 'quadruple',
           'apartment', 'family', 'suite', 'studio', 'dormitoryRoom', 'bedInDormitory',
@@ -288,7 +295,7 @@ export class RoomSyncService {
           'campSite', 'activity', 'tour', 'carRental'
         ];
         
-        const roomType = validBeds24RoomTypes.includes(beds24RoomType.toLowerCase())
+        const roomType: string = beds24RoomType && typeof beds24RoomType === 'string' && validBeds24RoomTypes.includes(beds24RoomType.toLowerCase())
           ? beds24RoomType.toLowerCase()
           : 'double';
 
@@ -315,7 +322,10 @@ export class RoomSyncService {
 
     for (const [groupKey, rooms] of roomTypeGroups) {
       try {
-        const [roomType, priceGroup, floor] = groupKey.split('_');
+        const parts = groupKey.split('_');
+        const roomType: string = parts[0] || 'double';
+        const priceGroup = parts[1] || '0';
+        const floor = parts[2] || String(defaultFloor);
         const firstRoom = rooms[0] as any;
         const fullRoom = firstRoom as any;
 
@@ -332,7 +342,7 @@ export class RoomSyncService {
           return sum + parseFloat(String(price));
         }, 0) / rooms.length;
         const finalPrice = Math.round(avgPrice * 100) / 100;
-        const finalFloor = parseInt(floor) || defaultFloor;
+        const finalFloor = parseInt(String(floor)) || defaultFloor;
 
         // Check if room type already exists (by room_type, price, and floor)
         // This is better than checking beds24_room_id since we group multiple rooms
@@ -396,7 +406,8 @@ export class RoomSyncService {
         }
 
         // Create room type
-        const roomTypeName = firstRoom.name || `${roomType.charAt(0).toUpperCase() + roomType.slice(1)} Room`;
+        const roomTypeCapitalized = roomType.charAt(0).toUpperCase() + roomType.slice(1);
+        const roomTypeName = firstRoom.name || `${roomTypeCapitalized} Room`;
         
         // Prepare features and units as JSON strings for JSONB columns
         const featuresArray = Array.from(allFeatures);

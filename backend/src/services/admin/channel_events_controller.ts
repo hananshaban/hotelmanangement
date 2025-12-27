@@ -3,6 +3,7 @@ import {
   getFailedChannelEvents,
   getChannelEventById,
   resetChannelEventForRetry,
+  type FailedEventFilters,
 } from '../../integrations/beds24/repositories/channel_event_repository.js';
 import { publishInbound, publishOutbound } from '../../integrations/beds24/queue/rabbitmq_publisher.js';
 
@@ -38,13 +39,20 @@ export async function getChannelEventsHandler(
     }
 
     // Get failed events
-    const result = await getFailedChannelEvents({
-      property_id: property_id as string | undefined,
-      direction: direction as 'inbound' | 'outbound' | undefined,
-      entity_type: entity_type as string | undefined,
+    const filters: FailedEventFilters = {
       limit: limitNum,
       offset: offsetNum,
-    });
+    };
+    if (property_id) {
+      filters.property_id = property_id as string;
+    }
+    if (direction) {
+      filters.direction = direction as 'inbound' | 'outbound';
+    }
+    if (entity_type) {
+      filters.entity_type = entity_type as string;
+    }
+    const result = await getFailedChannelEvents(filters);
 
     res.json({
       events: result.events.map((event) => ({

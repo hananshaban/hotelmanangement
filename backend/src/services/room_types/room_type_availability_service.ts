@@ -61,13 +61,15 @@ export class RoomTypeAvailabilityService {
     const totalUnits = roomType.qty;
 
     // Get all reservations for this room type in the date range
+    const endDateStr = endDate.toISOString().split('T')[0];
+    const startDateStr = startDate.toISOString().split('T')[0];
     const reservations = await db('reservations')
       .where({ room_type_id: roomTypeId })
       .whereNotIn('status', ['Cancelled', 'Checked-out'])
       .whereNull('deleted_at')
       .where(function () {
-        this.where('check_in', '<', endDate.toISOString().split('T')[0])
-          .where('check_out', '>', startDate.toISOString().split('T')[0]);
+        this.whereRaw('check_in < ?', [endDateStr])
+          .whereRaw('check_out > ?', [startDateStr]);
       })
       .select('check_in', 'check_out', 'units_requested', 'status');
 
@@ -92,11 +94,13 @@ export class RoomTypeAvailabilityService {
       }
 
       // Get maintenance units for this date
-      const maintenanceUnits = maintenance.get(dateStr) || 0;
+      const maintenanceUnits = dateStr ? (maintenance.get(dateStr) || 0) : 0;
 
       // Calculate available units
       const availableUnits = totalUnits - reservedUnits - maintenanceUnits;
-      availability.set(dateStr, Math.max(0, availableUnits));
+      if (dateStr) {
+        availability.set(dateStr, Math.max(0, availableUnits));
+      }
 
       // Move to next day
       currentDate.setDate(currentDate.getDate() + 1);
@@ -195,16 +199,19 @@ export class RoomTypeAvailabilityService {
           checkIn
         );
 
-        availableRoomTypes.push({
-          room_type_id: roomType.id,
-          room_type_name: roomType.name,
-          room_type: roomType.room_type,
-          available_units: minAvailable,
-          total_units: roomType.qty,
-          reserved_units: reservedUnits,
-          price_per_night: parseFloat(roomType.price_per_night),
-          date: checkIn.toISOString().split('T')[0],
-        });
+        const checkInDateStr = checkIn.toISOString().split('T')[0];
+        if (checkInDateStr) {
+          availableRoomTypes.push({
+            room_type_id: roomType.id,
+            room_type_name: roomType.name,
+            room_type: roomType.room_type,
+            available_units: minAvailable,
+            total_units: roomType.qty,
+            reserved_units: reservedUnits,
+            price_per_night: parseFloat(String(roomType.price_per_night)),
+            date: checkInDateStr,
+          });
+        }
       }
     }
 
@@ -221,8 +228,8 @@ export class RoomTypeAvailabilityService {
       .where({ room_type_id: roomTypeId })
       .whereNotIn('status', ['Cancelled', 'Checked-out'])
       .whereNull('deleted_at')
-      .where('check_in', '<=', dateStr)
-      .where('check_out', '>', dateStr)
+      .whereRaw('check_in <= ?', [dateStr])
+      .whereRaw('check_out > ?', [dateStr])
       .sum('units_requested as total');
 
     const total = reservations[0]?.total || 0;
@@ -231,80 +238,32 @@ export class RoomTypeAvailabilityService {
 
   /**
    * Get maintenance units for a room type on a specific date
+   * Note: maintenance_requests table doesn't support room_type_id or date ranges
+   * This method returns 0 as maintenance_requests are for individual rooms only
    */
   private async getMaintenanceUnits(roomTypeId: string, date: Date): Promise<number> {
-    // For now, we'll check maintenance_requests table
-    // If maintenance is linked to room_type_id, count affected units
-    // Otherwise, return 0
-    const dateStr = date.toISOString().split('T')[0];
-
-    const maintenance = await db('maintenance_requests')
-      .where({ room_type_id: roomTypeId })
-      .where('status', '!=', 'Completed')
-      .where('start_date', '<=', dateStr)
-      .where('end_date', '>=', dateStr)
-      .sum('affected_units as total')
-      .first();
-
-    // If affected_units column doesn't exist, count as 1 unit per maintenance request
-    if (!maintenance?.total) {
-      const count = await db('maintenance_requests')
-        .where({ room_type_id: roomTypeId })
-        .where('status', '!=', 'Completed')
-        .where('start_date', '<=', dateStr)
-        .where('end_date', '>=', dateStr)
-        .count('* as count')
-        .first();
-
-      return parseInt(count?.count?.toString() || '0') || 0;
-    }
-
-    return parseInt(maintenance.total.toString()) || 0;
+    // maintenance_requests table only supports individual rooms (room_id)
+    // and doesn't have start_date, end_date, affected_units, or room_type_id columns
+    // For room types, we can't check maintenance through this table
+    // Return 0 to indicate no maintenance units affected
+    return 0;
   }
 
   /**
    * Get maintenance units for a date range
+   * Note: maintenance_requests table doesn't support room_type_id or date ranges
+   * This method returns an empty map as maintenance_requests are for individual rooms only
    */
   private async getMaintenanceForRange(
     roomTypeId: string,
     startDate: Date,
     endDate: Date
   ): Promise<Map<string, number>> {
-    const maintenance = new Map<string, number>();
-
-    // Get all maintenance periods
-    const maintenanceRequests = await db('maintenance_requests')
-      .where({ room_type_id: roomTypeId })
-      .where('status', '!=', 'Completed')
-      .where(function () {
-        this.where('start_date', '<=', endDate.toISOString().split('T')[0])
-          .where('end_date', '>=', startDate.toISOString().split('T')[0]);
-      })
-      .select('start_date', 'end_date', 'affected_units');
-
-    // Calculate maintenance units for each day
-    const currentDate = new Date(startDate);
-    while (currentDate < endDate) {
-      const dateStr = currentDate.toISOString().split('T')[0];
-      let maintenanceUnits = 0;
-
-      for (const maint of maintenanceRequests) {
-        const startDate = new Date(maint.start_date);
-        const endDate = new Date(maint.end_date);
-        const affectedUnits = maint.affected_units || 1;
-
-        if (currentDate >= startDate && currentDate <= endDate) {
-          maintenanceUnits += affectedUnits;
-        }
-      }
-
-      maintenance.set(dateStr, maintenanceUnits);
-
-      // Move to next day
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    return maintenance;
+    // maintenance_requests table only supports individual rooms (room_id)
+    // and doesn't have start_date, end_date, affected_units, or room_type_id columns
+    // For room types, we can't check maintenance through this table
+    // Return empty map to indicate no maintenance units affected for any date
+    return new Map<string, number>();
   }
 }
 

@@ -14,8 +14,11 @@ import { ReservationPushService } from '../services/reservation_push_service.js'
 import { AvailabilityPushService } from '../services/availability_push_service.js';
 import db from '../../../config/database.js';
 import { decrypt } from '../../../utils/encryption.js';
+import dotenv from 'dotenv';
 
 const PROPERTY_ID = '00000000-0000-0000-0000-000000000001';
+
+dotenv.config();
 
 /**
  * Outbound Worker
@@ -35,10 +38,50 @@ export class OutboundWorker extends BaseRabbitMQConsumer {
       .first();
 
     if (!config) {
-      throw new Error('Beds24 configuration not found');
+      throw new Error('Beds24 configuration not found. Please configure Beds24 integration in settings.');
     }
 
-    const refreshToken = decrypt(config.refresh_token);
+    if (!config.refresh_token) {
+      throw new Error(
+        'Beds24 refresh token is missing. Please re-authenticate with Beds24 in settings.'
+      );
+    }
+
+    let refreshToken: string;
+    try {
+      refreshToken = decrypt(config.refresh_token);
+    } catch (error) {
+      // Enhanced error message for decryption failures
+      const errorMessage = error instanceof Error ? error.message : 'Unknown decryption error';
+      
+      // Check if it's a format issue
+      if (!config.refresh_token.includes(':')) {
+        throw new Error(
+          'Beds24 refresh token appears to be in invalid format. ' +
+          'This may indicate the token was not properly encrypted. ' +
+          'Please re-authenticate with Beds24 in settings. ' +
+          `Original error: ${errorMessage}`
+        );
+      }
+
+      // Check if encryption key might have changed
+      const encryptionKeySet = !!process.env.ENCRYPTION_KEY;
+      throw new Error(
+        `Failed to decrypt Beds24 refresh token. ` +
+        `This usually means the ENCRYPTION_KEY environment variable has changed ` +
+        `or the token was encrypted with a different key. ` +
+        `Please re-authenticate with Beds24 in settings to generate a new encrypted token. ` +
+        `ENCRYPTION_KEY is ${encryptionKeySet ? 'set' : 'not set'}. ` +
+        `Original error: ${errorMessage}`
+      );
+    }
+
+    if (!refreshToken || refreshToken.trim() === '') {
+      throw new Error(
+        'Decrypted Beds24 refresh token is empty. Please re-authenticate with Beds24 in settings.'
+      );
+    }
+
     return new Beds24Client(refreshToken);
   }
 
@@ -151,6 +194,21 @@ export class OutboundWorker extends BaseRabbitMQConsumer {
       await markChannelEventProcessed(channelEvent.id);
       console.log(`[OutboundWorker] Successfully processed event: ${channelEventId}`);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const isDecryptionError = errorMessage.includes('Decryption failed') || 
+                                 errorMessage.includes('decrypt') ||
+                                 errorMessage.includes('ENCRYPTION_KEY');
+
+      // Enhanced error logging with context
+      console.error(`[OutboundWorker] Error processing event ${channelEventId}:`, {
+        channelEventId,
+        eventType: channelEvent.event_type,
+        entityId: channelEvent.entity_internal_id,
+        error: errorMessage,
+        isDecryptionError,
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
       // Increment attempts
       await incrementChannelEventAttempts(channelEvent.id);
 
@@ -158,17 +216,41 @@ export class OutboundWorker extends BaseRabbitMQConsumer {
       const updatedEvent = await getChannelEventById(channelEventId);
       if (updatedEvent && updatedEvent.attempts >= updatedEvent.max_attempts) {
         // Max attempts reached, mark as failed (will go to DLQ)
-        await markChannelEventFailed(
-          channelEvent.id,
-          error instanceof Error ? error.message : 'Unknown error'
-        );
+        const failureMessage = isDecryptionError
+          ? `${errorMessage} - This is a configuration issue. Please re-authenticate with Beds24.`
+          : errorMessage;
+
+        await markChannelEventFailed(channelEvent.id, failureMessage);
+        
         console.error(
           `[OutboundWorker] Max attempts reached for event: ${channelEventId}`,
-          error
+          {
+            error: errorMessage,
+            attempts: updatedEvent.attempts,
+            maxAttempts: updatedEvent.max_attempts,
+            isDecryptionError,
+            recommendation: isDecryptionError
+              ? 'Re-authenticate with Beds24 in settings to fix encryption issue'
+              : 'Check error details and retry manually if needed',
+          }
         );
       }
 
-      // Re-throw to trigger nack and retry/DLQ routing
+      // For decryption errors, don't retry - it's a configuration issue
+      // Mark as failed immediately to prevent infinite retries
+      if (isDecryptionError && updatedEvent && updatedEvent.attempts >= 1) {
+        await markChannelEventFailed(
+          channelEvent.id,
+          `${errorMessage} - Configuration issue. Please re-authenticate with Beds24.`
+        );
+        console.error(
+          `[OutboundWorker] Marking event as failed due to decryption error (configuration issue): ${channelEventId}`
+        );
+        // Don't re-throw - we've marked it as failed, no need to retry
+        return;
+      }
+
+      // Re-throw to trigger nack and retry/DLQ routing for other errors
       throw error;
     }
   }

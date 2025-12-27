@@ -632,10 +632,7 @@ export async function getAllHousekeepingHandler(
       // Search in both legacy rooms and room type units
       query = query
         .leftJoin('rooms', 'housekeeping.room_id', 'rooms.id')
-        .leftJoin('room_types', function() {
-          // Extract room_type_id from unit_id (format: "roomTypeId-unit-index")
-          this.on(db.raw("housekeeping.unit_id LIKE room_types.id || '-unit-%'"), '=', db.raw('true'));
-        })
+        .leftJoin('room_types', db.raw("housekeeping.unit_id LIKE room_types.id || '-unit-%'"))
         .where(function() {
           this.where('rooms.room_number', 'ilike', `%${search}%`)
             .orWhere('room_types.name', 'ilike', `%${search}%`);

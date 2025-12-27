@@ -279,15 +279,19 @@ export class PullSyncService {
           console.log(`Successfully synced booking ${booking.id} -> reservation ${reservation.id}`);
         }
       } catch (error) {
-        results.push({
+        const bookingId = rawBooking.id?.toString() || 'unknown';
+        const result: SyncResult = {
           success: false,
           syncType: 'PULL',
           entityType: 'reservation',
-          entityId: booking.id?.toString() || 'unknown',
-          beds24Id: booking.id?.toString(),
+          entityId: bookingId,
           error: error instanceof Error ? error.message : 'Unknown error',
           syncedAt: new Date(),
-        });
+        };
+        if (bookingId !== 'unknown') {
+          result.beds24Id = bookingId;
+        }
+        results.push(result);
       }
     }
 

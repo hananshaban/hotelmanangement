@@ -10,13 +10,19 @@ export function mapPmsGuestToBeds24(guest: GuestResponse): Beds24Guest {
   const firstName = nameParts[0] || '';
   const lastName = nameParts.slice(1).join(' ') || '';
 
-  return {
+  const result: Beds24Guest = {
     firstName,
     lastName,
-    email: guest.email || undefined,
-    phone: guest.phone || undefined,
-    // Additional fields can be added if available in PMS
   };
+
+  if (guest.email) {
+    result.email = guest.email;
+  }
+  if (guest.phone) {
+    result.phone = guest.phone;
+  }
+
+  return result;
 }
 
 /**
@@ -37,7 +43,7 @@ export function mapBeds24GuestToPms(guest: Beds24Guest): {
   if (!fullName) {
     if (guest.email) {
       // Extract name from email (e.g., "john.doe@example.com" -> "john doe")
-      const emailName = guest.email.split('@')[0].replace(/[._-]/g, ' ');
+      const emailName = guest.email.split('@')[0]?.replace(/[._-]/g, ' ');
       fullName = emailName || 'Unknown Guest';
     } else if (guest.phone) {
       fullName = `Guest (${guest.phone})`;
@@ -47,11 +53,22 @@ export function mapBeds24GuestToPms(guest: Beds24Guest): {
     }
   }
 
-  return {
+  const result: {
+    name: string;
+    email?: string;
+    phone?: string;
+  } = {
     name: fullName,
-    email: guest.email || undefined,
-    phone: guest.phone || undefined,
   };
+
+  if (guest.email) {
+    result.email = guest.email;
+  }
+  if (guest.phone) {
+    result.phone = guest.phone;
+  }
+
+  return result;
 }
 
 /**

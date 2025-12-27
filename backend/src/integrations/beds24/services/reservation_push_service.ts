@@ -8,6 +8,7 @@ import type { SyncResult, SyncOptions } from '../beds24_sync_types.js';
 import {
   mapPmsReservationToBeds24,
   mapBeds24StatusToPms,
+  convertBookingToBeds24ApiFormat,
 } from '../mappers/reservation_mapper.js';
 import db from '../../../config/database.js';
 import { decrypt } from '../../../utils/encryption.js';
@@ -18,8 +19,12 @@ import { decrypt } from '../../../utils/encryption.js';
 export class ReservationPushService {
   private client: Beds24Client;
 
-  constructor(refreshToken: string) {
-    this.client = new Beds24Client(refreshToken);
+  constructor(clientOrRefreshToken: Beds24Client | string) {
+    if (clientOrRefreshToken instanceof Beds24Client) {
+      this.client = clientOrRefreshToken;
+    } else {
+      this.client = new Beds24Client(clientOrRefreshToken);
+    }
   }
 
   /**
@@ -29,9 +34,10 @@ export class ReservationPushService {
     reservationId: string,
     options: SyncOptions = {}
   ): Promise<SyncResult> {
+    let reservation: any = null;
     try {
       // Load reservation with related data
-      const reservation = await this.loadReservationData(reservationId);
+      reservation = await this.loadReservationData(reservationId);
       if (!reservation) {
         return {
           success: false,
@@ -81,15 +87,69 @@ export class ReservationPushService {
         };
       }
 
-      // Get room's Beds24 room ID
-      const room = await db('rooms').where({ id: reservation.room_id }).first();
-      if (!room?.beds24_room_id) {
+      // Get Beds24 room ID - support both room_id (legacy) and room_type_id (new)
+      let beds24RoomId: string | null = null;
+      let entityType: 'room' | 'room_type' = 'room';
+
+      if (reservation.room_id) {
+        // Legacy: Individual room based reservation
+        const room = await db('rooms').where({ id: reservation.room_id }).first();
+        if (!room) {
+          return {
+            success: false,
+            syncType: 'PUSH',
+            entityType: 'reservation',
+            entityId: reservationId,
+            error: 'Room not found',
+            syncedAt: new Date(),
+          };
+        }
+        beds24RoomId = room.beds24_room_id || null;
+        entityType = 'room';
+      } else if (reservation.room_type_id) {
+        // New: Room type based reservation
+        const roomType = await db('room_types')
+          .where({ id: reservation.room_type_id })
+          .whereNull('deleted_at')
+          .first();
+
+        if (!roomType) {
+          return {
+            success: false,
+            syncType: 'PUSH',
+            entityType: 'reservation',
+            entityId: reservationId,
+            error: 'Room type not found',
+            syncedAt: new Date(),
+          };
+        }
+
+        // Get beds24_room_id from room_type
+        beds24RoomId = roomType.beds24_room_id || null;
+
+        // Note: If room_type doesn't have beds24_room_id, we cannot sync
+        // Room types must have beds24_room_id configured for Beds24 sync to work
+
+        entityType = 'room_type';
+      } else {
         return {
           success: false,
           syncType: 'PUSH',
           entityType: 'reservation',
           entityId: reservationId,
-          error: 'Room not mapped to Beds24',
+          error: 'Reservation must have either room_id or room_type_id',
+          syncedAt: new Date(),
+        };
+      }
+
+      // Validate that we have a Beds24 room ID
+      if (!beds24RoomId) {
+        return {
+          success: false,
+          syncType: 'PUSH',
+          entityType: 'reservation',
+          entityId: reservationId,
+          error: `${entityType === 'room' ? 'Room' : 'Room type'} not mapped to Beds24. Please configure beds24_room_id.`,
           syncedAt: new Date(),
         };
       }
@@ -111,36 +171,49 @@ export class ReservationPushService {
       const beds24Booking = mapPmsReservationToBeds24(
         reservation,
         config.beds24_property_id,
-        room.beds24_room_id,
+        beds24RoomId,
         {
           name: guest.name,
           email: guest.email || undefined,
           phone: guest.phone || undefined,
-        }
+        },
+        reservation.units_requested // Pass units_requested for room type reservations
       );
+
+      // Convert to Beds24 API format (arrivalDate → arrival, departureDate → departure)
+      const apiBooking = convertBookingToBeds24ApiFormat(beds24Booking);
+
+      // Add roomQty if units_requested is present (for room type reservations)
+      if (reservation.units_requested && reservation.units_requested > 1) {
+        apiBooking.roomQty = reservation.units_requested;
+      }
 
       // Create or update booking in Beds24
       let beds24BookingId: number;
       if (reservation.beds24_booking_id) {
         // Update existing booking
-        const updateRequest = beds24Booking as Beds24BookingUpdateRequest;
+        const updateOptions: { method: 'PUT'; body: any; idempotencyKey?: string } = {
+          method: 'PUT',
+          body: apiBooking,
+        };
+        if (options.idempotencyKey) {
+          updateOptions.idempotencyKey = options.idempotencyKey;
+        }
         const updated = await this.client.makeRequest<Beds24Booking>(
-          `/bookings/${updateRequest.id}`,
-          {
-            method: 'PUT',
-            body: updateRequest,
-            idempotencyKey: options.idempotencyKey,
-          }
+          `/bookings/${apiBooking.id}`,
+          updateOptions
         );
         beds24BookingId = updated.id!;
       } else {
         // Create new booking
-        const createRequest = beds24Booking as Beds24BookingCreateRequest;
-        const created = await this.client.makeRequest<Beds24Booking>('/bookings', {
+        const createOptions: { method: 'POST'; body: any; idempotencyKey?: string } = {
           method: 'POST',
-          body: createRequest,
-          idempotencyKey: options.idempotencyKey,
-        });
+          body: apiBooking,
+        };
+        if (options.idempotencyKey) {
+          createOptions.idempotencyKey = options.idempotencyKey;
+        }
+        const created = await this.client.makeRequest<Beds24Booking>('/bookings', createOptions);
         beds24BookingId = created.id!;
 
         // Update reservation with Beds24 booking ID
@@ -152,6 +225,11 @@ export class ReservationPushService {
           });
       }
 
+      // Log successful sync
+      console.log(
+        `[ReservationPushService] Successfully synced reservation ${reservationId} to Beds24 booking ${beds24BookingId}`
+      );
+
       return {
         success: true,
         syncType: 'PUSH',
@@ -161,15 +239,34 @@ export class ReservationPushService {
         syncedAt: new Date(),
       };
     } catch (error) {
-      return {
+      // Enhanced error logging with context
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      
+      console.error(
+        `[ReservationPushService] Failed to push reservation ${reservationId} to Beds24:`,
+        {
+          reservationId,
+          roomId: reservation?.room_id || null,
+          roomTypeId: reservation?.room_type_id || null,
+          error: errorMessage,
+          errorCode: error instanceof Error ? error.constructor.name : undefined,
+          stack: errorStack,
+        }
+      );
+
+      const result: SyncResult = {
         success: false,
         syncType: 'PUSH',
         entityType: 'reservation',
         entityId: reservationId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        errorCode: error instanceof Error ? error.constructor.name : undefined,
+        error: errorMessage,
         syncedAt: new Date(),
       };
+      if (error instanceof Error) {
+        result.errorCode = error.constructor.name;
+      }
+      return result;
     }
   }
 
@@ -217,16 +314,19 @@ export class ReservationPushService {
       }
 
       // Update booking status to cancelled in Beds24
+      const cancelOptions: { method: 'PUT'; body: { id: number; status: string }; idempotencyKey?: string } = {
+        method: 'PUT',
+        body: {
+          id: parseInt(reservation.beds24_booking_id, 10),
+          status: 'cancelled',
+        },
+      };
+      if (options.idempotencyKey) {
+        cancelOptions.idempotencyKey = options.idempotencyKey;
+      }
       await this.client.makeRequest<Beds24Booking>(
         `/bookings/${reservation.beds24_booking_id}`,
-        {
-          method: 'PUT',
-          body: {
-            id: parseInt(reservation.beds24_booking_id, 10),
-            status: 'cancelled',
-          },
-          idempotencyKey: options.idempotencyKey,
-        }
+        cancelOptions
       );
 
       return {
@@ -238,15 +338,18 @@ export class ReservationPushService {
         syncedAt: new Date(),
       };
     } catch (error) {
-      return {
+      const result: SyncResult = {
         success: false,
         syncType: 'PUSH',
         entityType: 'reservation',
         entityId: reservationId,
         error: error instanceof Error ? error.message : 'Unknown error',
-        errorCode: error instanceof Error ? error.constructor.name : undefined,
         syncedAt: new Date(),
       };
+      if (error instanceof Error) {
+        result.errorCode = error.constructor.name;
+      }
+      return result;
     }
   }
 

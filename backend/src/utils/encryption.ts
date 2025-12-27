@@ -84,6 +84,10 @@ export function decrypt(encryptedText: string): string {
     
     const [saltHex, ivHex, tagHex, encrypted] = parts;
     
+    if (!saltHex || !ivHex || !tagHex || !encrypted) {
+      throw new Error('Invalid encrypted data format: missing parts');
+    }
+    
     const salt = Buffer.from(saltHex, 'hex');
     const iv = Buffer.from(ivHex, 'hex');
     const tag = Buffer.from(tagHex, 'hex');

@@ -448,6 +448,17 @@ export async function createReservationHandler(
     };
 
     res.status(201).json(response);
+
+    // Queue sync to Beds24 (non-blocking, fire-and-forget)
+    // This ensures reservations created in PMS are synced to Beds24
+    queueReservationSyncHook(reservation.id, 'create').catch((err) => {
+      console.error(
+        `[ReservationController] Failed to queue sync for reservation ${reservation.id}:`,
+        err
+      );
+      // Don't throw - sync failures shouldn't break reservation creation
+      // The reservation is already created and returned to the user
+    });
   } catch (error) {
     next(error);
   }

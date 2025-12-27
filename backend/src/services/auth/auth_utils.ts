@@ -14,7 +14,7 @@ export interface JwtPayload {
 export function generateToken(payload: JwtPayload): string {
   return jwt.sign(payload, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
-  });
+  } as jwt.SignOptions);
 }
 
 export function verifyToken(token: string): JwtPayload {
@@ -28,7 +28,7 @@ export function verifyToken(token: string): JwtPayload {
 export function generateRefreshToken(): string {
   return jwt.sign({ type: 'refresh' }, JWT_SECRET, {
     expiresIn: REFRESH_TOKEN_EXPIRES_IN,
-  });
+  } as jwt.SignOptions);
 }
 
 export async function hashPassword(password: string): Promise<string> {

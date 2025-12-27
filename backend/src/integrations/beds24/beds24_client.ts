@@ -166,9 +166,9 @@ class CircuitBreaker {
  * Handles authentication, rate limiting, circuit breaking, and API requests
  */
 export class Beds24Client {
-  private refreshToken?: string;
-  private accessToken?: string;
-  private tokenExpiresAt?: Date;
+  private refreshToken: string | undefined;
+  private accessToken: string | undefined;
+  private tokenExpiresAt: Date | undefined;
   private rateLimiter: RateLimiter;
   private circuitBreaker: CircuitBreaker;
 
@@ -183,6 +183,7 @@ export class Beds24Client {
 
   /**
    * Set refresh token (for token management)
+   * Invalidates cached access token to force refresh on next request
    */
   setRefreshToken(refreshToken: string): void {
     this.refreshToken = refreshToken;
@@ -378,7 +379,7 @@ export class Beds24Client {
       const response = await fetch(fullUrl, {
         method,
         headers,
-        body: options.body ? JSON.stringify(options.body) : undefined,
+        body: options.body ? JSON.stringify(options.body) : null,
         signal: controller.signal,
       });
 
@@ -414,6 +415,19 @@ export class Beds24Client {
           errorData?.error || 
           errorText ||
           `HTTP ${response.status}: ${response.statusText}`;
+
+        // Log full error details for debugging (especially for 400 validation errors)
+        if (response.status === 400) {
+          console.error('[Beds24Client] Validation error details:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorData,
+            errorText,
+            url: fullUrl,
+            method,
+            requestBody: options.body ? JSON.stringify(options.body, null, 2).substring(0, 1000) : undefined,
+          });
+        }
 
         const error = createBeds24Error(
           response.status,

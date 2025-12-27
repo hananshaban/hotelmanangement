@@ -262,8 +262,8 @@ export async function getFailedChannelEvents(
   }
 
   // Get total count
-  const [{ count }] = await countQuery.count('* as count');
-  const total = parseInt(count as string, 10);
+  const countResult = await countQuery.count('* as count').first();
+  const total = countResult?.count ? parseInt(String(countResult.count), 10) : 0;
 
   // Apply pagination
   if (filters.limit) {

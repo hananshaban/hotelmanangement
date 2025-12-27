@@ -16,8 +16,12 @@ import { decrypt } from '../../../utils/encryption.js';
 export class AvailabilityPushService {
   private client: Beds24Client;
 
-  constructor(refreshToken: string) {
-    this.client = new Beds24Client(refreshToken);
+  constructor(clientOrRefreshToken: Beds24Client | string) {
+    if (clientOrRefreshToken instanceof Beds24Client) {
+      this.client = clientOrRefreshToken;
+    } else {
+      this.client = new Beds24Client(clientOrRefreshToken);
+    }
   }
 
   /**
@@ -99,11 +103,14 @@ export class AvailabilityPushService {
       );
 
       // Push to Beds24
-      await this.client.makeRequest('/inventory/rooms/calendar', {
+      const requestOptions: { method: 'PUT'; body: Beds24CalendarUpdate; idempotencyKey?: string } = {
         method: 'PUT',
         body: calendarUpdate,
-        idempotencyKey: options.idempotencyKey,
-      });
+      };
+      if (options.idempotencyKey) {
+        requestOptions.idempotencyKey = options.idempotencyKey;
+      }
+      await this.client.makeRequest('/inventory/rooms/calendar', requestOptions);
 
       // Optionally push rates
       if (options.includeRates) {
@@ -123,15 +130,18 @@ export class AvailabilityPushService {
         syncedAt: new Date(),
       };
     } catch (error) {
-      return {
+      const result: SyncResult = {
         success: false,
         syncType: 'PUSH',
         entityType: 'availability',
         entityId: roomId,
         error: error instanceof Error ? error.message : 'Unknown error',
-        errorCode: error instanceof Error ? error.constructor.name : undefined,
         syncedAt: new Date(),
       };
+      if (error instanceof Error) {
+        result.errorCode = error.constructor.name;
+      }
+      return result;
     }
   }
 
@@ -194,7 +204,7 @@ export class AvailabilityPushService {
     isRoomType: boolean = false
   ): Promise<SyncResult> {
     try {
-      const range = dateRange || getDefaultDateRange();
+      const range = getDefaultDateRange();
 
       // Try room type first (new), then individual room (legacy)
       let room: any = null;
@@ -243,11 +253,14 @@ export class AvailabilityPushService {
 
       const ratesUpdate = await mapPmsRatesToBeds24(room, range, beds24RoomId);
 
-      await this.client.makeRequest('/inventory/rooms/calendar', {
+      const requestOptions: { method: 'PUT'; body: Beds24CalendarUpdate; idempotencyKey?: string } = {
         method: 'PUT',
         body: ratesUpdate,
-        idempotencyKey,
-      });
+      };
+      if (idempotencyKey) {
+        requestOptions.idempotencyKey = idempotencyKey;
+      }
+      await this.client.makeRequest('/inventory/rooms/calendar', requestOptions);
 
       return {
         success: true,
@@ -258,15 +271,18 @@ export class AvailabilityPushService {
         syncedAt: new Date(),
       };
     } catch (error) {
-      return {
+      const result: SyncResult = {
         success: false,
         syncType: 'PUSH',
         entityType: 'rate',
         entityId: roomId,
         error: error instanceof Error ? error.message : 'Unknown error',
-        errorCode: error instanceof Error ? error.constructor.name : undefined,
         syncedAt: new Date(),
       };
+      if (error instanceof Error) {
+        result.errorCode = error.constructor.name;
+      }
+      return result;
     }
   }
 

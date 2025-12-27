@@ -12,6 +12,8 @@ import { handleBookingCreated } from '../webhooks/handlers/booking_created_handl
 import { handleBookingModified } from '../webhooks/handlers/booking_modified_handler.js';
 import { handleBookingCancelled } from '../webhooks/handlers/booking_cancelled_handler.js';
 import { handleBookingDeleted } from '../webhooks/handlers/booking_deleted_handler.js';
+import dotenv from 'dotenv';
+dotenv.config();
 
 /**
  * Inbound Worker

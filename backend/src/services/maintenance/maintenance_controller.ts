@@ -49,22 +49,29 @@ export async function getMaintenanceRequestsHandler(
 
     const requests = await query;
 
-    const response: MaintenanceRequestResponse[] = requests.map((request) => ({
-      id: request.id,
-      room_id: request.room_id,
-      room_number: request.room_number,
-      title: request.title,
-      description: request.description,
-      priority: request.priority,
-      status: request.status,
-      assigned_to: request.assigned_to || undefined,
-      assigned_to_name: request.assigned_to_first_name && request.assigned_to_last_name
-        ? `${request.assigned_to_first_name} ${request.assigned_to_last_name}`
-        : undefined,
-      completed_at: request.completed_at || undefined,
-      created_at: request.created_at,
-      updated_at: request.updated_at,
-    }));
+    const response: MaintenanceRequestResponse[] = requests.map((request) => {
+      const item: MaintenanceRequestResponse = {
+        id: request.id,
+        room_id: request.room_id,
+        room_number: request.room_number,
+        title: request.title,
+        description: request.description,
+        priority: request.priority,
+        status: request.status,
+        created_at: request.created_at,
+        updated_at: request.updated_at,
+      };
+      if (request.assigned_to) {
+        item.assigned_to = request.assigned_to;
+      }
+      if (request.assigned_to_first_name && request.assigned_to_last_name) {
+        item.assigned_to_name = `${request.assigned_to_first_name} ${request.assigned_to_last_name}`;
+      }
+      if (request.completed_at) {
+        item.completed_at = request.completed_at;
+      }
+      return item;
+    });
 
     res.json(response);
   } catch (error) {
@@ -109,14 +116,18 @@ export async function getMaintenanceRequestHandler(
       description: request.description,
       priority: request.priority,
       status: request.status,
-      assigned_to: request.assigned_to || undefined,
-      assigned_to_name: request.assigned_to_first_name && request.assigned_to_last_name
-        ? `${request.assigned_to_first_name} ${request.assigned_to_last_name}`
-        : undefined,
-      completed_at: request.completed_at || undefined,
       created_at: request.created_at,
       updated_at: request.updated_at,
     };
+    if (request.assigned_to) {
+      response.assigned_to = request.assigned_to;
+    }
+    if (request.assigned_to_first_name && request.assigned_to_last_name) {
+      response.assigned_to_name = `${request.assigned_to_first_name} ${request.assigned_to_last_name}`;
+    }
+    if (request.completed_at) {
+      response.completed_at = request.completed_at;
+    }
 
     res.json(response);
   } catch (error) {
@@ -195,14 +206,18 @@ export async function createMaintenanceRequestHandler(
       description: fullRequest.description,
       priority: fullRequest.priority,
       status: fullRequest.status,
-      assigned_to: fullRequest.assigned_to || undefined,
-      assigned_to_name: fullRequest.assigned_to_first_name && fullRequest.assigned_to_last_name
-        ? `${fullRequest.assigned_to_first_name} ${fullRequest.assigned_to_last_name}`
-        : undefined,
-      completed_at: fullRequest.completed_at || undefined,
       created_at: fullRequest.created_at,
       updated_at: fullRequest.updated_at,
     };
+    if (fullRequest.assigned_to) {
+      response.assigned_to = fullRequest.assigned_to;
+    }
+    if (fullRequest.assigned_to_first_name && fullRequest.assigned_to_last_name) {
+      response.assigned_to_name = `${fullRequest.assigned_to_first_name} ${fullRequest.assigned_to_last_name}`;
+    }
+    if (fullRequest.completed_at) {
+      response.completed_at = fullRequest.completed_at;
+    }
 
     res.status(201).json(response);
   } catch (error) {
@@ -309,14 +324,18 @@ export async function updateMaintenanceRequestHandler(
       description: updated.description,
       priority: updated.priority,
       status: updated.status,
-      assigned_to: updated.assigned_to || undefined,
-      assigned_to_name: updated.assigned_to_first_name && updated.assigned_to_last_name
-        ? `${updated.assigned_to_first_name} ${updated.assigned_to_last_name}`
-        : undefined,
-      completed_at: updated.completed_at || undefined,
       created_at: updated.created_at,
       updated_at: updated.updated_at,
     };
+    if (updated.assigned_to) {
+      response.assigned_to = updated.assigned_to;
+    }
+    if (updated.assigned_to_first_name && updated.assigned_to_last_name) {
+      response.assigned_to_name = `${updated.assigned_to_first_name} ${updated.assigned_to_last_name}`;
+    }
+    if (updated.completed_at) {
+      response.completed_at = updated.completed_at;
+    }
 
     res.json(response);
   } catch (error) {

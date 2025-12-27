@@ -158,7 +158,7 @@ export class InitialSyncService {
       return {
         success: false,
         rooms: { created: 0, mapped: 0, errors: [] },
-        reservations: { synced: 0, errors: 0 },
+        reservations: { synced: 0, errors: 0, errorDetails: [] },
         error: errorMessage,
       };
     }
@@ -257,10 +257,15 @@ export class InitialSyncService {
       const errors = results.filter((r) => !r.success).length;
       const errorDetails = results
         .filter((r) => !r.success)
-        .map((r) => ({
-          bookingId: r.beds24Id,
-          error: r.error || 'Unknown error',
-        }));
+        .map((r) => {
+          const detail: { bookingId?: string; error: string } = {
+            error: r.error || 'Unknown error',
+          };
+          if (r.beds24Id) {
+            detail.bookingId = r.beds24Id;
+          }
+          return detail;
+        });
 
       console.log(`Synced ${synced} reservations, ${errors} errors`);
       

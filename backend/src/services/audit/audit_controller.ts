@@ -19,7 +19,7 @@ function transformAuditLog(log: any): AuditLogResponse {
       : log.after_state;
   }
 
-  return {
+  const result: AuditLogResponse = {
     id: log.id,
     userId: log.user_id,
     action: log.action,
@@ -34,8 +34,13 @@ function transformAuditLog(log: any): AuditLogResponse {
     ipAddress: log.ip_address,
     userAgent: log.user_agent,
     timestamp: log.created_at,
-    details: Object.keys(details).length > 0 ? details : undefined,
   };
+  
+  if (Object.keys(details).length > 0) {
+    result.details = details;
+  }
+  
+  return result;
 }
 
 export async function getAuditLogsHandler(

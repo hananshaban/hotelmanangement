@@ -6,7 +6,10 @@
  */
 
 import { publishOutbound } from '../queue/rabbitmq_publisher.js';
-import { createChannelEvent } from '../repositories/channel_event_repository.js';
+import {
+  createChannelEvent,
+  updateChannelEventStatus,
+} from '../repositories/channel_event_repository.js';
 import db from '../../../config/database.js';
 
 /**
@@ -35,12 +38,12 @@ function generateIdempotencyKey(
 }
 
 /**
- * Queue reservation sync after create/update
- * Call this after successfully creating or updating a reservation
+ * Queue reservation sync after create/update/cancel
+ * Call this after successfully creating, updating, or cancelling a reservation
  */
 export async function queueReservationSyncHook(
   reservationId: string,
-  action: 'create' | 'update' = 'update'
+  action: 'create' | 'update' | 'cancel' = 'update'
 ): Promise<void> {
   try {
     if (!(await isSyncEnabled())) {
@@ -89,10 +92,36 @@ export async function queueReservationSyncHook(
         messageId: channelEvent.id,
         priority: 10, // High priority for bookings
       }
-    ).catch((error) => {
-      console.error(`[SyncHook] Failed to publish reservation sync for ${reservationId}:`, error);
-      // Don't throw - sync failures shouldn't break the main operation
-    });
+    )
+      .then(() => {
+        console.log(
+          `[SyncHook] Successfully queued reservation sync for ${reservationId} (event: ${channelEvent.id})`
+        );
+      })
+      .catch((error) => {
+        // Enhanced error logging
+        console.error(`[SyncHook] Failed to publish reservation sync for ${reservationId}:`, {
+          reservationId,
+          channelEventId: channelEvent.id,
+          action,
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        });
+        
+        // Update channel event status to failed if publish fails
+        // This ensures we track the failure even if RabbitMQ is down
+        updateChannelEventStatus(channelEvent.id, {
+          status: 'failed',
+          error: `Failed to publish to RabbitMQ: ${error instanceof Error ? error.message : String(error)}`,
+        }).catch((updateError) => {
+          console.error(
+            `[SyncHook] Failed to update channel event status for ${channelEvent.id}:`,
+            updateError
+          );
+        });
+        
+        // Don't throw - sync failures shouldn't break the main operation
+      });
   } catch (error) {
     // Log but don't throw - sync is non-blocking
     console.error(`[SyncHook] Error in reservation sync hook for ${reservationId}:`, error);

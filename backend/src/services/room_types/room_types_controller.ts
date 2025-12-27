@@ -281,7 +281,8 @@ export async function deleteRoomTypeHandler(
       .count('* as count')
       .first();
 
-    if (parseInt(activeReservations?.count || '0') > 0) {
+    const activeCount = activeReservations?.count ? parseInt(String(activeReservations.count), 10) : 0;
+    if (activeCount > 0) {
       res.status(400).json({
         error: 'Cannot delete room type with active reservations',
       } as any);
@@ -379,16 +380,31 @@ export async function getAvailableRoomTypesHandler(
       return;
     }
 
+    const filters: {
+      minPrice?: number;
+      maxPrice?: number;
+      roomType?: string;
+      maxPeople?: number;
+      unitsRequested?: number;
+    } = {
+      unitsRequested: parseInt(String(units_requested)) || 1,
+    };
+    if (min_price) {
+      filters.minPrice = parseFloat(String(min_price));
+    }
+    if (max_price) {
+      filters.maxPrice = parseFloat(String(max_price));
+    }
+    if (room_type) {
+      filters.roomType = String(room_type);
+    }
+    if (max_people) {
+      filters.maxPeople = parseInt(String(max_people));
+    }
     const availableRoomTypes = await availabilityService.getAvailableRoomTypes(
       checkInDate,
       checkOutDate,
-      {
-        minPrice: min_price ? parseFloat(min_price as string) : undefined,
-        maxPrice: max_price ? parseFloat(max_price as string) : undefined,
-        roomType: room_type as any,
-        maxPeople: max_people ? parseInt(max_people as string) : undefined,
-        unitsRequested: parseInt(units_requested as string) || 1,
-      }
+      filters
     );
 
     res.json({

@@ -71,9 +71,11 @@ export async function processSyncJob(jobData: SyncJobData): Promise<SyncResult> 
       }
     } else if (jobData.type === 'availability') {
       const service = new AvailabilityPushService(refreshToken);
-      return await service.pushRoomAvailability(jobData.roomId, undefined, {
-        includeRates: jobData.includeRates,
-      });
+      const options: { includeRates?: boolean; isRoomType?: boolean; idempotencyKey?: string } = {};
+      if (jobData.includeRates !== undefined) {
+        options.includeRates = jobData.includeRates;
+      }
+      return await service.pushRoomAvailability(jobData.roomId, undefined, options);
     } else if (jobData.type === 'rate') {
       const service = new AvailabilityPushService(refreshToken);
       return await service.pushRates(jobData.roomId);
