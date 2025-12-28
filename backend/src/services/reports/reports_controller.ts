@@ -123,17 +123,21 @@ export async function getReportStatsHandler(
     const profit = totalRevenue - totalExpenses;
     const profitMargin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
 
-    // Occupancy statistics
-    const totalRooms = await db('rooms').count('* as count').first();
+    // Occupancy statistics - use room_types with qty for total rooms count
+    const totalRoomsResult = await db('room_types')
+      .whereNull('deleted_at')
+      .sum('qty as total');
+    const totalRoomsCount = totalRoomsResult?.[0]?.total ? parseInt(String(totalRoomsResult[0].total), 10) : 0;
+
+    // Count occupied rooms from checked-in reservations
     const occupiedRooms = await db('reservations')
       .whereRaw('check_in <= ?', [todayStr])
       .whereRaw('check_out > ?', [todayStr])
       .whereIn('status', ['Checked-in'])
       .whereNull('deleted_at')
-      .countDistinct('room_id as count')
+      .count('* as count')
       .first();
 
-    const totalRoomsCount = totalRooms?.count ? parseInt(String(totalRooms.count), 10) : 0;
     const occupiedRoomsCount = occupiedRooms?.count ? parseInt(String(occupiedRooms.count), 10) : 0;
     const currentOccupancyRate = totalRoomsCount > 0 ? (occupiedRoomsCount / totalRoomsCount) * 100 : 0;
 

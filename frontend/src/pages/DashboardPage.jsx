@@ -1,54 +1,90 @@
 import { useMemo, useEffect, useState } from 'react'
 import StatCard from '../components/StatCard'
-import useStore from '../store/useStore'
 import { api } from '../utils/api.js'
-import { format, isToday, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, addDays, isWithinInterval, getMonth, getYear } from 'date-fns'
+import useReservationsStore from '../store/reservationsStore.js'
+import useInvoicesStore from '../store/invoicesStore.js'
+import useExpensesStore from '../store/expensesStore.js'
+import { format, eachDayOfInterval, addDays, getMonth, getYear } from 'date-fns'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts'
 
 const DashboardPage = () => {
-  const { reservations, invoices, expenses } = useStore()
+  const { reservations, fetchReservations, loading: reservationsLoading } = useReservationsStore()
+  const { invoices, fetchInvoices, loading: invoicesLoading } = useInvoicesStore()
+  const { expenses, fetchExpenses, loading: expensesLoading } = useExpensesStore()
+  
+  const [roomTypes, setRoomTypes] = useState([])
   const [reportStats, setReportStats] = useState(null)
-  const [rooms, setRooms] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [statsLoading, setStatsLoading] = useState(true)
   const [error, setError] = useState(null)
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        setLoading(true)
+        setStatsLoading(true)
         setError(null)
         
-        // Fetch stats and rooms in parallel
-        const [stats, roomsData] = await Promise.all([
-          api.reports.getStats(),
-          api.rooms.getAll()
+        // Fetch all dashboard data in parallel
+        const results = await Promise.allSettled([
+          api.roomTypes.getAll(),
+          fetchReservations(),
+          fetchInvoices(),
+          fetchExpenses(),
+          api.reports.getStats()
         ])
         
-        setReportStats(stats)
-        setRooms(roomsData)
+        // Check for errors
+        const errors = results.filter(r => r.status === 'rejected')
+        if (errors.length > 0) {
+          console.error('Some dashboard fetches failed:', errors)
+        }
+        
+        // Set room types if successful
+        if (results[0].status === 'fulfilled') {
+          setRoomTypes(results[0].value || [])
+        }
+        
+        // Set report stats if successful
+        if (results[4].status === 'fulfilled') {
+          setReportStats(results[4].value)
+        }
       } catch (err) {
-        setError(err.message || 'Failed to load dashboard statistics')
         console.error('Error fetching dashboard data:', err)
+        setError(err.message || 'Failed to load dashboard statistics')
       } finally {
-        setLoading(false)
+        setStatsLoading(false)
       }
     }
 
     fetchDashboardData()
-  }, [])
+  }, [fetchReservations, fetchInvoices, fetchExpenses])
+
+  const loading = statsLoading || reservationsLoading || invoicesLoading || expensesLoading
 
   // Calculate stats from backend data
   const stats = useMemo(() => {
-    const totalRooms = rooms.length
-    // Backend returns status field directly
-    const occupiedRooms = rooms.filter((room) => room.status === 'Occupied').length
-    const availableRooms = rooms.filter((room) => room.status === 'Available').length
-
-    // Calculate today's revenue from invoices issued today
+    // Calculate total rooms from room types (sum of qty for each room type)
+    const totalRooms = roomTypes.reduce((sum, rt) => sum + (parseInt(rt.qty) || 1), 0)
+    
+    // Calculate occupied rooms from current checked-in reservations
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const todayStr = today.toISOString().split('T')[0]
     
+    // Count reservations that are currently checked-in
+    const occupiedRooms = reservations.filter((res) => {
+      if (res.status !== 'Checked-in' || !res.checkIn || !res.checkOut) return false
+      try {
+        const checkIn = res.checkIn.split('T')[0]
+        const checkOut = res.checkOut.split('T')[0]
+        return checkIn <= todayStr && checkOut > todayStr
+      } catch (e) {
+        return false
+      }
+    }).length
+    
+    const availableRooms = Math.max(0, totalRooms - occupiedRooms)
+
+    // Calculate today's revenue from invoices issued today
     const todaysRevenue = invoices
       .filter((inv) => {
         const issueDate = inv.issueDate ? inv.issueDate.split('T')[0] : null
@@ -64,7 +100,7 @@ const DashboardPage = () => {
       todaysCheckOuts: reportStats?.reservations?.today_check_outs || 0,
       todaysRevenue,
     }
-  }, [rooms, reportStats, invoices])
+  }, [roomTypes, reportStats, invoices, reservations])
 
   // Financial calculations from backend stats (always use backend data)
   const financialStats = useMemo(() => {
@@ -144,9 +180,10 @@ const DashboardPage = () => {
       .filter((inv) => inv.status === 'Paid' && inv.issueDate)
       .forEach((inv) => {
         try {
-          const date = parseISO(inv.issueDate)
-          const month = getMonth(date) + 1
-          const monthKey = `${getYear(date)}-${String(month).padStart(2, '0')}`
+          // Parse date string directly without parseISO to avoid timezone issues
+          const dateStr = inv.issueDate.split('T')[0]
+          const [year, month] = dateStr.split('-')
+          const monthKey = `${year}-${month}`
           monthRevenue[monthKey] = (monthRevenue[monthKey] || 0) + (parseFloat(inv.amount) || 0)
         } catch (e) {
           // Skip invalid dates
@@ -180,12 +217,14 @@ const DashboardPage = () => {
     })
 
     return next30Days.map((date) => {
+      const dateStr = format(date, 'yyyy-MM-dd')
       const occupiedCount = reservations.filter((res) => {
         if (res.status === 'Cancelled' || !res.checkIn || !res.checkOut) return false
         try {
-          const checkIn = parseISO(res.checkIn)
-          const checkOut = parseISO(res.checkOut)
-          return isWithinInterval(date, { start: checkIn, end: checkOut })
+          // Use string comparison for dates to avoid timezone issues
+          const checkIn = res.checkIn.split('T')[0]
+          const checkOut = res.checkOut.split('T')[0]
+          return checkIn <= dateStr && checkOut > dateStr
         } catch (e) {
           return false
         }

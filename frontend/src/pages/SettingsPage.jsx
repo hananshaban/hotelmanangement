@@ -811,7 +811,7 @@ const SettingsPage = () => {
                     {beds24Config.syncProgress.rooms && (
                       <div>
                         <div className="flex justify-between text-sm mb-1">
-                          <span className="font-medium text-gray-700">Rooms</span>
+                          <span className="font-medium text-gray-700">Room Types</span>
                           <span className="text-gray-600">
                             {beds24Config.syncProgress.rooms.synced || 0} / {beds24Config.syncProgress.rooms.total || 0}
                             {beds24Config.syncProgress.rooms.errors > 0 && (
@@ -895,233 +895,24 @@ const SettingsPage = () => {
           )}
 
           {/* Configuration Section */}
-          {beds24Config?.configured && (
+          /*
+          {/* {beds24Config?.configured && (
             <div className="card">
               <h2 className="text-xl font-semibold text-gray-900 mb-6">Sync Configuration</h2>
-              
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Enable Sync
-                    </label>
-                    <p className="text-sm text-gray-500">Master switch for all Beds24 sync</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={beds24Config.syncEnabled || false}
-                      onChange={(e) => handleUpdateBeds24Config({ syncEnabled: e.target.checked })}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Push Sync (PMS → Beds24)
-                    </label>
-                    <p className="text-sm text-gray-500">Sync reservations and availability to Beds24</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={beds24Config.pushSyncEnabled || false}
-                      onChange={(e) => handleUpdateBeds24Config({ pushSyncEnabled: e.target.checked })}
-                      disabled={!beds24Config.syncEnabled}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Pull Sync (Beds24 → PMS)
-                    </label>
-                    <p className="text-sm text-gray-500">Sync bookings from Beds24 to PMS</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={beds24Config.pullSyncEnabled || false}
-                      onChange={(e) => handleUpdateBeds24Config({ pullSyncEnabled: e.target.checked })}
-                      disabled={!beds24Config.syncEnabled}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Webhooks
-                    </label>
-                    <p className="text-sm text-gray-500">Receive real-time updates from Beds24</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={beds24Config.webhookEnabled || false}
-                      onChange={(e) => handleUpdateBeds24Config({ webhookEnabled: e.target.checked })}
-                      disabled={!beds24Config.syncEnabled}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
-                  </label>
-                </div>
-
-                <div className="pt-4 border-t border-gray-200">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Webhook Secret (Optional)
-                  </label>
-                  <input
-                    type="password"
-                    value={webhookSecret}
-                    onChange={(e) => setWebhookSecret(e.target.value)}
-                    placeholder="Enter webhook secret from Beds24"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <p className="mt-1 text-sm text-gray-500">
-                    Set this in Beds24 webhook settings for signature verification
-                  </p>
-                  {webhookSecret && (
-                    <button
-                      onClick={() => handleUpdateBeds24Config({ webhookSecret })}
-                      className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
-                    >
-                      Save Webhook Secret
-                    </button>
-                  )}
-                </div>
-              </div>
+              ...existing code...
             </div>
-          )}
+          )} */}
+          */
 
           {/* Room Mapping Section */}
+          {/* /*
           {beds24Config?.configured && (
             <div className="card">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">Room Mapping</h2>
-                {beds24Rooms.length > 0 && (
-                  <button
-                    onClick={handleAutoCreateRooms}
-                    disabled={roomsLoading}
-                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                  >
-                    {roomsLoading ? 'Creating...' : `Auto-Create ${beds24Rooms.length} Rooms`}
-                  </button>
-                )}
-              </div>
-
-              {roomsLoading && !beds24Rooms.length && !pmsRooms.length ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="text-gray-500">Loading rooms...</div>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {/* Unmapped Beds24 Rooms */}
-                  {beds24Rooms.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">
-                        Unmapped Beds24 Rooms ({beds24Rooms.length})
-                      </h3>
-                      <div className="space-y-2">
-                        {beds24Rooms.map((beds24Room) => (
-                          <div
-                            key={beds24Room.id}
-                            className="flex items-center justify-between p-3 border border-gray-200 rounded-md"
-                          >
-                            <div>
-                              <p className="font-medium text-gray-900">
-                                {beds24Room.name || `Room ${beds24Room.id}`}
-                              </p>
-                              <p className="text-sm text-gray-500">
-                                Beds24 ID: {beds24Room.id} | Type: {beds24Room.type || 'N/A'} | Max Guests: {beds24Room.maxGuests || 'N/A'}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <select
-                                onChange={(e) => {
-                                  if (e.target.value) {
-                                    handleMapRoom(e.target.value, beds24Room.id.toString())
-                                    e.target.value = ''
-                                  }
-                                }}
-                                className="px-3 py-1 border border-gray-300 rounded-md text-sm"
-                                defaultValue=""
-                              >
-                                <option value="">Map to PMS room...</option>
-                                {pmsRooms
-                                  .filter((r) => !r.beds24_room_id)
-                                  .map((pmsRoom) => (
-                                    <option key={pmsRoom.id} value={pmsRoom.id}>
-                                      {pmsRoom.room_number} ({pmsRoom.type})
-                                    </option>
-                                  ))}
-                              </select>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Mapped PMS Rooms */}
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">
-                      Mapped Rooms ({pmsRooms.filter((r) => r.beds24_room_id).length})
-                    </h3>
-                    {pmsRooms.filter((r) => r.beds24_room_id).length === 0 ? (
-                      <p className="text-gray-500 text-sm">No rooms mapped yet</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {pmsRooms
-                          .filter((r) => r.beds24_room_id)
-                          .map((pmsRoom) => (
-                            <div
-                              key={pmsRoom.id}
-                              className="flex items-center justify-between p-3 border border-gray-200 rounded-md bg-green-50"
-                            >
-                              <div>
-                                <p className="font-medium text-gray-900">
-                                  {pmsRoom.room_number} ({pmsRoom.type})
-                                </p>
-                                <p className="text-sm text-gray-500">
-                                  Mapped to Beds24 Room ID: {pmsRoom.beds24_room_id}
-                                </p>
-                              </div>
-                              <button
-                                onClick={() => handleUnmapRoom(pmsRoom.id)}
-                                className="px-3 py-1 text-sm text-red-600 hover:text-red-700 border border-red-300 rounded-md hover:bg-red-50"
-                              >
-                                Unmap
-                              </button>
-                            </div>
-                          ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Unmapped PMS Rooms */}
-                  {pmsRooms.filter((r) => !r.beds24_room_id).length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">
-                        Unmapped PMS Rooms ({pmsRooms.filter((r) => !r.beds24_room_id).length})
-                      </h3>
-                      <p className="text-sm text-gray-500 mb-2">
-                        These rooms exist in PMS but are not mapped to Beds24. Map them above when Beds24 rooms are available.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">Room Mapping</h2>
+              ...existing code...
             </div>
-          )}
+          )} */}
+          */
         </div>
       )}
 

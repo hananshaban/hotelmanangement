@@ -18,7 +18,7 @@ const ReservationsPage = () => {
   const { rooms, fetchRooms } = useRoomsStore()
   const { getAvailableRoomTypes } = useRoomTypesStore()
   const { guests, fetchGuests } = useGuestsStore()
-  const { createInvoice } = useInvoicesStore()
+  const { invoices, fetchInvoices, createInvoice } = useInvoicesStore()
   const toast = useToast()
   const confirmation = useConfirmation()
   const {
@@ -67,12 +67,13 @@ const ReservationsPage = () => {
   const [guestName, setGuestName] = useState('') // For creating new guest
   const [guest2Name, setGuest2Name] = useState('') // For creating second guest
 
-  // Fetch reservations, guests, and rooms on mount
+  // Fetch reservations, guests, rooms, and invoices on mount
   useEffect(() => {
     fetchReservations()
     fetchGuests()
     fetchRooms()
-  }, [fetchReservations, fetchGuests, fetchRooms])
+    fetchInvoices()
+  }, [fetchReservations, fetchGuests, fetchRooms, fetchInvoices])
 
   // Check availability when dates change - runs immediately when dates are valid
   useEffect(() => {
@@ -226,7 +227,18 @@ const ReservationsPage = () => {
     return filtered
   }, [searchTerm, statusFilter, sortBy, reservations])
 
+  // Check if an invoice already exists for a reservation
+  const hasInvoice = (reservationId) => {
+    return invoices.some((inv) => String(inv.reservationId) === String(reservationId))
+  }
+
   const handleCreateInvoice = async (reservation) => {
+    // Check if invoice already exists
+    if (hasInvoice(reservation.id)) {
+      toast.error('An invoice already exists for this reservation')
+      return
+    }
+
     // Find guest by name or ID
     const guest = guests.find(
       (g) => g.name === reservation.guestName || String(g.id) === String(reservation.guestId)
@@ -616,7 +628,9 @@ const ReservationsPage = () => {
               {filteredAndSortedReservations.map((reservation) => (
                 <tr key={reservation.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{reservation.id}</div>
+                    <div className="text-sm font-medium text-gray-900" title={reservation.id}>
+                      {reservation.id?.substring(0, 8)}...
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{reservation.guestName}</div>
@@ -643,12 +657,18 @@ const ReservationsPage = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => handleCreateInvoice(reservation)}
-                      className="text-primary-600 hover:text-primary-900"
-                    >
-                      Create Invoice
-                    </button>
+                    {hasInvoice(reservation.id) ? (
+                      <span className="text-gray-400 cursor-not-allowed" title="Invoice already exists">
+                        Invoice Created
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleCreateInvoice(reservation)}
+                        className="text-primary-600 hover:text-primary-900"
+                      >
+                        Create Invoice
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
