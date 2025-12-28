@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import db from '../../config/database.js';
 import type { CreateGuestRequest, UpdateGuestRequest, GuestResponse } from './guests_types.js';
+import { logCreate, logUpdate, logDelete } from '../audit/audit_utils.js';
 
 // Get all guests
 export async function getGuestsHandler(
@@ -147,6 +148,13 @@ export async function createGuestHandler(
     };
 
     res.status(201).json(response);
+
+    // Audit log: guest created
+    logCreate(req, 'guest', newGuest.id, {
+      name: newGuest.name,
+      email: newGuest.email,
+      phone: newGuest.phone,
+    }).catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
     next(error);
   }
@@ -241,6 +249,17 @@ export async function updateGuestHandler(
     };
 
     res.json(response);
+
+    // Audit log: guest updated
+    logUpdate(req, 'guest', id, {
+      name: existing.name,
+      email: existing.email,
+      phone: existing.phone,
+    }, {
+      name: updated.name,
+      email: updated.email,
+      phone: updated.phone,
+    }).catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
     next(error);
   }
@@ -273,6 +292,13 @@ export async function deleteGuestHandler(
     });
 
     res.status(204).send();
+
+    // Audit log: guest deleted
+    logDelete(req, 'guest', id, {
+      name: guest.name,
+      email: guest.email,
+      phone: guest.phone,
+    }).catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
     next(error);
   }

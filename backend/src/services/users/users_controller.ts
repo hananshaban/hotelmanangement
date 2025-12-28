@@ -3,6 +3,7 @@ import db from '../../config/database.js';
 import { hashPassword } from '../auth/auth_utils.js';
 import type { CreateUserRequest, UpdateUserRequest, UserResponse } from './users_types.js';
 import { requireRole } from '../auth/auth_middleware.js';
+import { logCreate, logUpdate, logDelete } from '../audit/audit_utils.js';
 
 /**
  * Get all users (staff)
@@ -111,6 +112,14 @@ export async function createUserHandler(
       .returning(['id', 'email', 'first_name', 'last_name', 'role', 'is_active', 'last_login', 'created_at', 'updated_at']);
 
     res.status(201).json(user as UserResponse);
+
+    // Audit log: user created
+    logCreate(req, 'user', user.id, {
+      email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      role: user.role,
+    }).catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
     next(error);
   }
@@ -189,6 +198,21 @@ export async function updateUserHandler(
       .returning(['id', 'email', 'first_name', 'last_name', 'role', 'is_active', 'last_login', 'created_at', 'updated_at']);
 
     res.json(updatedUser as UserResponse);
+
+    // Audit log: user updated
+    logUpdate(req, 'user', id, {
+      email: existingUser.email,
+      first_name: existingUser.first_name,
+      last_name: existingUser.last_name,
+      role: existingUser.role,
+      is_active: existingUser.is_active,
+    }, {
+      email: updatedUser.email,
+      first_name: updatedUser.first_name,
+      last_name: updatedUser.last_name,
+      role: updatedUser.role,
+      is_active: updatedUser.is_active,
+    }).catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
     next(error);
   }
@@ -239,6 +263,14 @@ export async function deleteUserHandler(
       success: true,
       message: 'User deleted successfully',
     });
+
+    // Audit log: user deleted
+    logDelete(req, 'user', id, {
+      email: existingUser.email,
+      first_name: existingUser.first_name,
+      last_name: existingUser.last_name,
+      role: existingUser.role,
+    }).catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
     next(error);
   }

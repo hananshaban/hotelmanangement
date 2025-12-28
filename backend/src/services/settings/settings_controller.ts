@@ -4,6 +4,7 @@ import type {
   HotelSettingsResponse,
   UpdateHotelSettingsRequest,
 } from './settings_types.js';
+import { logAction, logUpdate } from '../audit/audit_utils.js';
 
 const HOTEL_SETTINGS_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -86,6 +87,15 @@ export async function clearAllDataHandler(
       success: true,
       message: 'All data cleared successfully (users and Beds24 config preserved)',
     });
+
+    // Audit log: all data cleared
+    logAction(req, 'CLEAR_ALL_DATA', 'system', 'all', {
+      cleared_tables: [
+        'reservation_guests', 'reservations', 'invoices', 'expenses',
+        'maintenance_requests', 'housekeeping', 'room_types', 'rooms',
+        'guests', 'sync_conflicts', 'webhook_events', 'audit_logs'
+      ],
+    }).catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
     console.error('Error clearing data:', error);
     next(error);
@@ -180,6 +190,11 @@ export async function updateHotelSettingsHandler(
       ...settings,
       settings: parsedSettings,
     } as any);
+
+    // Audit log: settings updated
+    logAction(req, 'UPDATE_SETTINGS', 'hotel_settings', HOTEL_SETTINGS_ID, {
+      updated_fields: Object.keys(req.body),
+    }).catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
     next(error);
   }

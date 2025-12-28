@@ -8,6 +8,7 @@ import type {
   AvailableRoomTypesQuery,
 } from './room_types_types.js';
 import { RoomTypeAvailabilityService } from './room_type_availability_service.js';
+import { logCreate, logUpdate, logDelete } from '../audit/audit_utils.js';
 
 const availabilityService = new RoomTypeAvailabilityService();
 
@@ -157,6 +158,14 @@ export async function createRoomTypeHandler(
     };
 
     res.status(201).json(roomTypeWithParsed as RoomTypeResponse);
+
+    // Audit log: room type created
+    logCreate(req, 'room_type', roomType.id, {
+      name: roomType.name,
+      room_type: roomType.room_type,
+      qty: roomType.qty,
+      price_per_night: roomType.price_per_night,
+    }).catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
     next(error);
   }
@@ -244,6 +253,19 @@ export async function updateRoomTypeHandler(
     };
 
     res.json(roomTypeWithParsed as RoomTypeResponse);
+
+    // Audit log: room type updated
+    logUpdate(req, 'room_type', id, {
+      name: existing.name,
+      room_type: existing.room_type,
+      qty: existing.qty,
+      price_per_night: existing.price_per_night,
+    }, {
+      name: roomType.name,
+      room_type: roomType.room_type,
+      qty: roomType.qty,
+      price_per_night: roomType.price_per_night,
+    }).catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
     next(error);
   }
@@ -295,6 +317,14 @@ export async function deleteRoomTypeHandler(
       .update({ deleted_at: new Date() });
 
     res.status(204).send();
+
+    // Audit log: room type deleted
+    logDelete(req, 'room_type', id, {
+      name: existing.name,
+      room_type: existing.room_type,
+      qty: existing.qty,
+      price_per_night: existing.price_per_night,
+    }).catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
     next(error);
   }

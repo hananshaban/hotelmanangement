@@ -25,9 +25,11 @@ export interface CreateAuditLogRequest {
 export interface AuditLogResponse {
   id: string;
   userId: string | null;
+  userName: string | null;
   action: string;
   entityType: string;
   entityId: string;
+  entityName: string | null;
   beforeState: Record<string, any> | null;
   afterState: Record<string, any> | null;
   ipAddress: string | null;

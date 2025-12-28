@@ -11,6 +11,7 @@ import {
   queueRoomAvailabilitySyncHook,
 } from '../../integrations/beds24/hooks/sync_hooks.js';
 import { RoomTypeAvailabilityService } from '../room_types/room_type_availability_service.js';
+import { logCreate, logUpdate, logDelete, logAction } from '../audit/audit_utils.js';
 
 const availabilityService = new RoomTypeAvailabilityService();
 
@@ -468,6 +469,18 @@ export async function createReservationHandler(
 
     res.status(201).json(response);
 
+    // Audit log: reservation created
+    logCreate(req, 'reservation', reservation.id, {
+      room_type_id: roomTypeId,
+      room_id: roomId,
+      guest_name: fullReservation.primary_guest_name,
+      check_in,
+      check_out,
+      status,
+      total_amount: totalAmount,
+      source,
+    }).catch((err) => console.error('Audit log failed:', err));
+
     // Queue sync to Beds24 (non-blocking, fire-and-forget)
     // This ensures reservations created in PMS are synced to Beds24
     queueReservationSyncHook(reservation.id, 'create').catch((err) => {
@@ -660,6 +673,19 @@ export async function updateReservationHandler(
     };
 
     res.json(response);
+
+    // Audit log: reservation updated
+    logUpdate(req, 'reservation', id, {
+      check_in: existing.check_in,
+      check_out: existing.check_out,
+      status: existing.status,
+      room_id: existing.room_id,
+    }, {
+      check_in: updated.check_in,
+      check_out: updated.check_out,
+      status: updated.status,
+      room_id: updated.room_id,
+    }).catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
     next(error);
   }
@@ -709,6 +735,16 @@ export async function deleteReservationHandler(
     }
 
     res.status(204).send();
+
+    // Audit log: reservation deleted/cancelled
+    logDelete(req, 'reservation', id, {
+      check_in: reservation.check_in,
+      check_out: reservation.check_out,
+      status: reservation.status,
+      room_id: reservation.room_id,
+      primary_guest_id: reservation.primary_guest_id,
+      total_amount: reservation.total_amount,
+    }).catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
     next(error);
   }

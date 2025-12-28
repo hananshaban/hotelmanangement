@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import db from '../../config/database.js';
 import type { CreateExpenseRequest, UpdateExpenseRequest, ExpenseResponse } from './expenses_types.js';
+import { logCreate, logUpdate, logDelete } from '../audit/audit_utils.js';
 
 // Get all expenses
 export async function getExpensesHandler(
@@ -154,6 +155,13 @@ export async function createExpenseHandler(
     };
 
     res.status(201).json(response);
+
+    // Audit log: expense created
+    logCreate(req, 'expense', newExpense.id, {
+      category: newExpense.category,
+      amount: parseFloat(newExpense.amount),
+      expense_date: newExpense.expense_date,
+    }).catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
     next(error);
   }
@@ -242,6 +250,17 @@ export async function updateExpenseHandler(
     };
 
     res.json(response);
+
+    // Audit log: expense updated
+    logUpdate(req, 'expense', id, {
+      category: existing.category,
+      amount: parseFloat(existing.amount),
+      expense_date: existing.expense_date,
+    }, {
+      category: updated.category,
+      amount: parseFloat(updated.amount),
+      expense_date: updated.expense_date,
+    }).catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
     next(error);
   }
@@ -274,6 +293,13 @@ export async function deleteExpenseHandler(
     });
 
     res.status(204).send();
+
+    // Audit log: expense deleted
+    logDelete(req, 'expense', id, {
+      category: expense.category,
+      amount: parseFloat(expense.amount),
+      expense_date: expense.expense_date,
+    }).catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
     next(error);
   }

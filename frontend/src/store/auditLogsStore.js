@@ -33,7 +33,9 @@ const useAuditLogsStore = create((set, get) => ({
         action: log.action,
         entityType: log.entityType,
         entityId: log.entityId,
+        entityName: log.entityName,
         userId: log.userId,
+        userName: log.userName,
         timestamp: log.timestamp,
         details: log.details || (log.afterState ? { after: log.afterState } : {}),
       }));

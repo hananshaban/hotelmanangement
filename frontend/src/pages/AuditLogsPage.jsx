@@ -41,6 +41,8 @@ const AuditLogsPage = () => {
           log.action.toLowerCase().includes(searchLower) ||
           log.entityType.toLowerCase().includes(searchLower) ||
           log.entityId.toLowerCase().includes(searchLower) ||
+          (log.userName && log.userName.toLowerCase().includes(searchLower)) ||
+          (log.entityName && log.entityName.toLowerCase().includes(searchLower)) ||
           (log.userId && log.userId.toLowerCase().includes(searchLower))
         );
       });
@@ -118,10 +120,31 @@ const AuditLogsPage = () => {
   }, [auditLogs])
 
   const getActionColor = (action) => {
-    if (action.includes('ADD')) return 'text-green-600'
-    if (action.includes('UPDATE')) return 'text-blue-600'
-    if (action.includes('DELETE')) return 'text-red-600'
-    return 'text-gray-600'
+    if (action.includes('CREATE')) return 'bg-green-100 text-green-800'
+    if (action.includes('UPDATE')) return 'bg-blue-100 text-blue-800'
+    if (action.includes('DELETE')) return 'bg-red-100 text-red-800'
+    if (action.includes('LOGIN')) return 'bg-purple-100 text-purple-800'
+    if (action.includes('PAYMENT')) return 'bg-yellow-100 text-yellow-800'
+    if (action.includes('CLEAR')) return 'bg-orange-100 text-orange-800'
+    return 'bg-gray-100 text-gray-800'
+  }
+
+  // Format action for better readability
+  const formatAction = (action) => {
+    return action.replace(/_/g, ' ')
+  }
+
+  // Format entity type for better readability
+  const formatEntityType = (entityType) => {
+    return entityType
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase())
+  }
+
+  // Truncate UUID for display
+  const truncateId = (id) => {
+    if (!id || id.length <= 12) return id
+    return `${id.substring(0, 8)}...`
   }
 
   return (
@@ -186,6 +209,9 @@ const AuditLogsPage = () => {
                     <SortIcon column="timestamp" />
                   </div>
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Staff
+                </th>
                 <th 
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('action')}
@@ -200,24 +226,12 @@ const AuditLogsPage = () => {
                   onClick={() => handleSort('entityType')}
                 >
                   <div className="flex items-center gap-1">
-                    Entity Type
+                    Entity
                     <SortIcon column="entityType" />
                   </div>
                 </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('entityId')}
-                >
-                  <div className="flex items-center gap-1">
-                    Entity ID
-                    <SortIcon column="entityId" />
-                  </div>
-                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  User
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Details
+                  Name / ID
                 </th>
               </tr>
             </thead>
@@ -225,30 +239,39 @@ const AuditLogsPage = () => {
               {filteredAndSortedLogs.map((log) => (
                 <tr key={log.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {format(parseISO(log.timestamp), 'MMM dd, yyyy HH:mm:ss')}
+                    <div className="flex flex-col">
+                      <span className="font-medium text-gray-900">
+                        {format(parseISO(log.timestamp), 'MMM dd, yyyy')}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {format(parseISO(log.timestamp), 'HH:mm:ss')}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`text-sm font-medium ${getActionColor(log.action)}`}>
-                      {log.action}
+                    <span className="text-sm font-medium text-gray-900">
+                      {log.userName || 'System'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getActionColor(log.action)}`}>
+                      {formatAction(log.action)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {log.entityType}
+                    {formatEntityType(log.entityType)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {log.entityId}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {log.userId}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {log.details && typeof log.details === 'object' ? (
-                      <pre className="text-xs">
-                        {JSON.stringify(log.details, null, 2)}
-                      </pre>
-                    ) : (
-                      log.details || '-'
-                    )}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex flex-col">
+                      {log.entityName && (
+                        <span className="text-sm font-medium text-gray-900">
+                          {log.entityName}
+                        </span>
+                      )}
+                      <span className="text-xs text-gray-500 font-mono" title={log.entityId}>
+                        {truncateId(log.entityId)}
+                      </span>
+                    </div>
                   </td>
                 </tr>
               ))}

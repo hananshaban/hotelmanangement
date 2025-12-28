@@ -8,6 +8,7 @@ import {
   type JwtPayload,
 } from './auth_utils.js';
 import type { LoginRequest, RegisterRequest, AuthResponse } from './auth_types.js';
+import { logAction, logCreate } from '../audit/audit_utils.js';
 
 export async function loginHandler(
   req: Request<{}, AuthResponse, LoginRequest>,
@@ -85,6 +86,12 @@ export async function loginHandler(
       token,
       refreshToken,
     } as any);
+
+    // Audit log: user login
+    logAction(req, 'USER_LOGIN', 'user', user.id, {
+      email: user.email,
+      role: user.role,
+    }).catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
     next(error);
   }
@@ -162,6 +169,14 @@ export async function registerHandler(
       token,
       refreshToken,
     } as any);
+
+    // Audit log: user registered
+    logCreate(req, 'user', user.id, {
+      email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      role: user.role,
+    }).catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
     next(error);
   }

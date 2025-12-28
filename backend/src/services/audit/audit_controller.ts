@@ -3,6 +3,34 @@ import db from '../../config/database.js';
 import type { GetAuditLogsQuery, AuditLogResponse } from './audit_types.js';
 
 /**
+ * Extract entity name from before/after state
+ */
+function extractEntityName(log: any): string | null {
+  // Try to get name from after_state first (for creates), then before_state (for deletes)
+  const afterState = log.after_state 
+    ? (typeof log.after_state === 'string' ? JSON.parse(log.after_state) : log.after_state)
+    : null;
+  const beforeState = log.before_state 
+    ? (typeof log.before_state === 'string' ? JSON.parse(log.before_state) : log.before_state)
+    : null;
+
+  const state = afterState || beforeState;
+  if (!state) return null;
+
+  // Try common name fields based on entity type
+  if (state.name) return state.name;
+  if (state.guest_name) return state.guest_name;
+  if (state.primary_guest_name) return state.primary_guest_name;
+  if (state.room_type_name) return state.room_type_name;
+  if (state.first_name && state.last_name) return `${state.first_name} ${state.last_name}`;
+  if (state.email) return state.email;
+  if (state.category) return state.category;
+  if (state.description) return state.description.substring(0, 50);
+  
+  return null;
+}
+
+/**
  * Transform database audit log to API response format
  */
 function transformAuditLog(log: any): AuditLogResponse {
@@ -19,12 +47,19 @@ function transformAuditLog(log: any): AuditLogResponse {
       : log.after_state;
   }
 
+  // Build user name from first_name and last_name if available
+  const userName = log.user_first_name && log.user_last_name
+    ? `${log.user_first_name} ${log.user_last_name}`
+    : log.user_email || null;
+
   const result: AuditLogResponse = {
     id: log.id,
     userId: log.user_id,
+    userName: userName,
     action: log.action,
     entityType: log.entity_type,
     entityId: log.entity_id,
+    entityName: extractEntityName(log),
     beforeState: log.before_state 
       ? (typeof log.before_state === 'string' ? JSON.parse(log.before_state) : log.before_state)
       : null,
@@ -51,7 +86,15 @@ export async function getAuditLogsHandler(
   try {
     const query = req.query as unknown as GetAuditLogsQuery;
     
-    let queryBuilder = db('audit_logs').select('*');
+    // Join with users table to get user names
+    let queryBuilder = db('audit_logs')
+      .select(
+        'audit_logs.*',
+        'users.first_name as user_first_name',
+        'users.last_name as user_last_name',
+        'users.email as user_email'
+      )
+      .leftJoin('users', 'audit_logs.user_id', 'users.id');
 
     // Apply filters
     if (query.action) {
@@ -158,7 +201,16 @@ export async function getAuditLogHandler(
   try {
     const { id } = req.params;
 
-    const log = await db('audit_logs').where({ id }).first();
+    const log = await db('audit_logs')
+      .select(
+        'audit_logs.*',
+        'users.first_name as user_first_name',
+        'users.last_name as user_last_name',
+        'users.email as user_email'
+      )
+      .leftJoin('users', 'audit_logs.user_id', 'users.id')
+      .where('audit_logs.id', id)
+      .first();
 
     if (!log) {
       res.status(404).json({

@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import db from '../../config/database.js';
 import type { CreateInvoiceRequest, UpdateInvoiceRequest, InvoiceResponse } from './invoices_types.js';
+import { logCreate, logUpdate, logDelete, logAction } from '../audit/audit_utils.js';
 
 // Get all invoices
 export async function getInvoicesHandler(
@@ -241,6 +242,17 @@ export async function createInvoiceHandler(
     };
 
     res.status(201).json(response);
+
+    // Audit log: invoice created
+    logCreate(req, 'invoice', fullInvoice.id, {
+      guest_id,
+      guest_name: fullInvoice.guest_name,
+      reservation_id: reservation_id || null,
+      amount,
+      status,
+      issue_date,
+      due_date,
+    }).catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
     next(error);
   }
@@ -377,6 +389,29 @@ export async function updateInvoiceHandler(
     };
 
     res.json(response);
+
+    // Audit log: invoice updated (with special handling for payment)
+    const action = updates.status === 'Paid' && existing.status !== 'Paid' 
+      ? 'RECORD_PAYMENT' 
+      : 'UPDATE_INVOICE';
+    
+    if (action === 'RECORD_PAYMENT') {
+      logAction(req, action, 'invoice', id, {
+        amount: parseFloat(updated.amount),
+        payment_method: updated.payment_method,
+        guest_name: updated.guest_name,
+      }).catch((err) => console.error('Audit log failed:', err));
+    } else {
+      logUpdate(req, 'invoice', id, {
+        status: existing.status,
+        amount: parseFloat(existing.amount),
+        payment_method: existing.payment_method,
+      }, {
+        status: updated.status,
+        amount: parseFloat(updated.amount),
+        payment_method: updated.payment_method,
+      }).catch((err) => console.error('Audit log failed:', err));
+    }
   } catch (error) {
     next(error);
   }
@@ -409,6 +444,14 @@ export async function deleteInvoiceHandler(
     });
 
     res.status(204).send();
+
+    // Audit log: invoice deleted
+    logDelete(req, 'invoice', id, {
+      guest_id: invoice.guest_id,
+      reservation_id: invoice.reservation_id,
+      amount: parseFloat(invoice.amount),
+      status: invoice.status,
+    }).catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
     next(error);
   }
