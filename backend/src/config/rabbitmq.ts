@@ -1,5 +1,6 @@
 import amqp, { Connection, Channel } from 'amqplib';
 import { connect, AmqpConnectionManager, ChannelWrapper } from 'amqp-connection-manager';
+import dotenv from 'dotenv';
 
 /**
  * RabbitMQ Configuration
@@ -15,6 +16,8 @@ export interface RabbitMQConfig {
   reconnectDelay: number;
   maxReconnectAttempts: number;
 }
+
+dotenv.config();
 
 /**
  * Get RabbitMQ connection URL from environment
