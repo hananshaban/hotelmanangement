@@ -16,6 +16,7 @@ import { settingsRoutes } from './services/settings/settings_routes.js';
 import { usersRoutes } from './services/users/users_routes.js';
 import { adminRoutes } from './services/admin/channel_events_routes.js';
 import beds24WebhookRoutes from './integrations/beds24/webhooks/webhook_routes.js';
+import { qloAppsRoutes } from './services/qloapps/index.js';
 
 export const apiV1Router = Router();
 
@@ -34,3 +35,4 @@ apiV1Router.use('/v1', settingsRoutes);
 apiV1Router.use('/v1', usersRoutes);
 apiV1Router.use('/admin', adminRoutes);
 apiV1Router.use('/integrations/beds24', beds24WebhookRoutes);
+apiV1Router.use('/v1/integrations/qloapps', qloAppsRoutes);
