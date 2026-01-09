@@ -100,10 +100,11 @@ class QloAppsPublisher {
     options: {
       syncType?: 'full' | 'incremental';
       qloAppsBookingId?: number;
+      syncStateId?: string;
       priority?: number;
     } = {}
   ): Promise<string> {
-    const message: Omit<QloAppsInboundMessage, 'messageId' | 'timestamp' | 'retryCount'> = {
+    const message: Omit<QloAppsInboundMessage, 'messageId' | 'timestamp' | 'retryCount'> & { syncStateId?: string } = {
       eventType: 'booking.sync',
       configId,
       syncType: options.syncType ?? 'incremental',
@@ -111,6 +112,10 @@ class QloAppsPublisher {
 
     if (options.qloAppsBookingId !== undefined) {
       message.qloAppsBookingId = options.qloAppsBookingId;
+    }
+
+    if (options.syncStateId !== undefined) {
+      message.syncStateId = options.syncStateId;
     }
 
     return this.publish(QLOAPPS_ROUTING_KEYS.BOOKING_UPDATED, message, {
@@ -307,7 +312,7 @@ export const qloAppsPublisher = new QloAppsPublisher();
  */
 export function queueQloAppsInboundSync(
   configId: string,
-  options?: { syncType?: 'full' | 'incremental'; qloAppsBookingId?: number }
+  options?: { syncType?: 'full' | 'incremental'; qloAppsBookingId?: number; syncStateId?: string }
 ): Promise<string> {
   return qloAppsPublisher.queueInboundSync(configId, options);
 }

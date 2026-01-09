@@ -244,27 +244,27 @@ export async function createAvailabilityBatches(
   // Get all room type mappings
   const mappings = await db('qloapps_room_type_mappings')
     .where({ is_active: true })
-    .select('pms_room_type_id', 'qloapps_room_type_id');
+    .select('local_room_type_id', 'qloapps_product_id');
 
   for (const mapping of mappings) {
     try {
       const availability = await calculateRoomTypeAvailability(
-        mapping.pms_room_type_id,
+        mapping.local_room_type_id,
         dateRange
       );
 
       const updates = mapAvailabilityToQloApps(
         availability,
-        parseInt(mapping.qloapps_room_type_id, 10)
+        parseInt(mapping.qloapps_product_id, 10)
       );
 
       batches.push({
-        roomTypeId: mapping.pms_room_type_id,
-        qloAppsRoomTypeId: parseInt(mapping.qloapps_room_type_id, 10),
+        roomTypeId: mapping.local_room_type_id,
+        qloAppsRoomTypeId: parseInt(mapping.qloapps_product_id, 10),
         updates,
       });
     } catch (error) {
-      console.error(`Failed to calculate availability for room type ${mapping.pms_room_type_id}:`, error);
+      console.error(`Failed to calculate availability for room type ${mapping.local_room_type_id}:`, error);
       // Continue with other room types
     }
   }
@@ -283,27 +283,27 @@ export async function createRateBatches(
   // Get all room type mappings
   const mappings = await db('qloapps_room_type_mappings')
     .where({ is_active: true })
-    .select('pms_room_type_id', 'qloapps_room_type_id');
+    .select('local_room_type_id', 'qloapps_product_id');
 
   for (const mapping of mappings) {
     try {
       const rates = await getRoomTypeRates(
-        mapping.pms_room_type_id,
+        mapping.local_room_type_id,
         dateRange
       );
 
       const updates = mapRatesToQloApps(
         rates,
-        parseInt(mapping.qloapps_room_type_id, 10)
+        parseInt(mapping.qloapps_product_id, 10)
       );
 
       batches.push({
-        roomTypeId: mapping.pms_room_type_id,
-        qloAppsRoomTypeId: parseInt(mapping.qloapps_room_type_id, 10),
+        roomTypeId: mapping.local_room_type_id,
+        qloAppsRoomTypeId: parseInt(mapping.qloapps_product_id, 10),
         updates,
       });
     } catch (error) {
-      console.error(`Failed to get rates for room type ${mapping.pms_room_type_id}:`, error);
+      console.error(`Failed to get rates for room type ${mapping.local_room_type_id}:`, error);
       // Continue with other room types
     }
   }

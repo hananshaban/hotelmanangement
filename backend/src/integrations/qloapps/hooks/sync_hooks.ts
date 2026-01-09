@@ -203,7 +203,7 @@ export async function queueQloAppsAvailabilitySyncHook(
 
     // Check if room type is mapped to QloApps
     const mapping = await db('qloapps_room_type_mappings')
-      .where({ pms_room_type_id: roomTypeId })
+      .where({ local_room_type_id: roomTypeId })
       .whereNull('deleted_at')
       .first();
 
@@ -303,7 +303,7 @@ export async function queueQloAppsRateSyncHook(
 
     // Check if room type is mapped to QloApps
     const mapping = await db('qloapps_room_type_mappings')
-      .where({ pms_room_type_id: roomTypeId })
+      .where({ local_room_type_id: roomTypeId })
       .whereNull('deleted_at')
       .first();
 
@@ -366,7 +366,7 @@ export async function queueQloAppsRoomTypeSyncHook(
 
     // Check if room type is mapped to QloApps
     const mapping = await db('qloapps_room_type_mappings')
-      .where({ pms_room_type_id: roomTypeId })
+      .where({ local_room_type_id: roomTypeId })
       .whereNull('deleted_at')
       .first();
 

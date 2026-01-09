@@ -13,6 +13,8 @@ import type {
   QloAppsStoredConfig,
 } from '../qloapps_types.js';
 import { QloAppsGuestMatchingService } from './guest_matching_service.js';
+import { QloAppsRoomTypeSyncService } from './room_type_sync_service.js';
+import { QloAppsCustomerSyncService } from './customer_sync_service.js';
 import {
   mapQloAppsBookingToPms,
   validateQloAppsBooking,
@@ -50,6 +52,31 @@ export interface PullSyncOptions {
   fullSync?: boolean;
 }
 
+/**
+ * Result of a full 3-phase sync
+ */
+export interface FullSyncResult {
+  success: boolean;
+  roomTypes: {
+    processed: number;
+    synced: number;
+    failed: number;
+  };
+  customers: {
+    processed: number;
+    synced: number;
+    failed: number;
+  };
+  reservations: {
+    processed: number;
+    created: number;
+    updated: number;
+    failed: number;
+  };
+  durationMs: number;
+  error?: string;
+}
+
 // ============================================================================
 // Pull Sync Service
 // ============================================================================
@@ -60,12 +87,20 @@ export interface PullSyncOptions {
 export class QloAppsPullSyncService {
   private client: QloAppsClient;
   private configId: string;
+  private propertyId: string;
+  private hotelId: number;
   private guestMatchingService: QloAppsGuestMatchingService;
+  private roomTypeSyncService: QloAppsRoomTypeSyncService;
+  private customerSyncService: QloAppsCustomerSyncService;
 
-  constructor(client: QloAppsClient, configId: string) {
+  constructor(client: QloAppsClient, configId: string, propertyId: string, hotelId: number) {
     this.client = client;
     this.configId = configId;
+    this.propertyId = propertyId;
+    this.hotelId = hotelId;
     this.guestMatchingService = new QloAppsGuestMatchingService();
+    this.roomTypeSyncService = new QloAppsRoomTypeSyncService(client, configId, propertyId, hotelId);
+    this.customerSyncService = new QloAppsCustomerSyncService(client, configId, propertyId, hotelId);
   }
 
   /**
@@ -81,23 +116,32 @@ export class QloAppsPullSyncService {
     }
 
     const apiKey = decrypt(config.api_key_encrypted);
+    const hotelId = parseInt(config.qloapps_hotel_id, 10);
     const client = new QloAppsClient({
       baseUrl: config.base_url,
       apiKey,
-      hotelId: parseInt(config.qloapps_hotel_id, 10),
+      hotelId,
     });
 
-    return new QloAppsPullSyncService(client, configId);
+    return new QloAppsPullSyncService(client, configId, config.property_id, hotelId);
   }
 
   /**
    * Pull bookings from QloApps
+   * Bookings are automatically normalized from PrestaShop associations structure
    */
   async pullBookings(options: PullSyncOptions = {}): Promise<QloAppsBooking[]> {
     const params: Record<string, any> = {};
 
-    // Add date filters
-    if (options.modifiedSince && !options.fullSync) {
+    // Add date filters - use dateFrom/dateTo for broader ranges, modifiedSince as fallback
+    if (options.dateFrom) {
+      params.dateFrom = options.dateFrom;
+    }
+    if (options.dateTo) {
+      params.dateTo = options.dateTo;
+    }
+    if (options.modifiedSince && !options.dateFrom && !options.dateTo) {
+      // Only use modifiedSince if no explicit date range is set
       params.modifiedSince = options.modifiedSince.toISOString();
     }
 
@@ -110,6 +154,12 @@ export class QloAppsPullSyncService {
     }
 
     console.log(`[QloApps Pull] Fetching bookings with params:`, params);
+    if (params.dateFrom || params.dateTo) {
+      console.log(`[QloApps Pull] 📅 Date Range: ${params.dateFrom || 'All'} to ${params.dateTo || 'All'}`);
+    }
+    if (params.modifiedSince) {
+      console.log(`[QloApps Pull] ⏰ Modified Since: ${params.modifiedSince}`);
+    }
 
     const bookings = await this.client.getBookings(params);
 
@@ -145,6 +195,120 @@ export class QloAppsPullSyncService {
   }
 
   /**
+   * Run full 3-phase sync: Room Types -> Customers -> Reservations
+   * This ensures all dependencies exist before syncing reservations
+   */
+  async pullFullSync(options: PullSyncOptions = {}): Promise<FullSyncResult> {
+    const startTime = Date.now();
+    console.log('[QloApps Pull] ========================================');
+    console.log('[QloApps Pull] Starting 3-phase full sync...');
+
+    // Set broader date range for full sync: from last month to coming year
+    const now = new Date();
+    const lastMonth = new Date(now);
+    lastMonth.setMonth(now.getMonth() - 1);
+    const comingYear = new Date(now);
+    comingYear.setFullYear(now.getFullYear() + 1);
+
+    // Override or set date filters for broader sync range
+    options.dateFrom = options.dateFrom || lastMonth.toISOString().split('T')[0];
+    options.dateTo = options.dateTo || comingYear.toISOString().split('T')[0];
+
+    console.log('[QloApps Pull] 📅 Full Sync Date Range:');
+    console.log(`[QloApps Pull]   From: ${options.dateFrom} (last month)`);
+    console.log(`[QloApps Pull]   To: ${options.dateTo} (coming year)`);
+    console.log('[QloApps Pull] ========================================');
+
+    try {
+      // Phase 1: Room Types
+      console.log('[QloApps Pull] 📋 PHASE 1: Syncing Room Types...');
+      const roomTypeResults = await this.roomTypeSyncService.pullRoomTypes();
+      const roomTypesProcessed = roomTypeResults.length;
+      const roomTypesSynced = roomTypeResults.filter(r => r.success && (r.action === 'created' || r.action === 'mapped')).length;
+      const roomTypesFailed = roomTypeResults.filter(r => !r.success).length;
+      
+      console.log('[QloApps Pull] ✓ Room Types Phase Complete:');
+      console.log(`[QloApps Pull]   Processed: ${roomTypesProcessed}`);
+      console.log(`[QloApps Pull]   Synced: ${roomTypesSynced}`);
+      console.log(`[QloApps Pull]   Failed: ${roomTypesFailed}`);
+
+      // Phase 2: Customers
+      console.log('[QloApps Pull] 👥 PHASE 2: Syncing Customers...');
+      const customerResults = await this.customerSyncService.pullCustomers({
+        updateExisting: false,
+      });
+      const customersProcessed = customerResults.length;
+      const customersSynced = customerResults.filter(r => r.success && (r.action === 'created' || r.action === 'matched')).length;
+      const customersFailed = customerResults.filter(r => !r.success).length;
+      
+      console.log('[QloApps Pull] ✓ Customers Phase Complete:');
+      console.log(`[QloApps Pull]   Processed: ${customersProcessed}`);
+      console.log(`[QloApps Pull]   Synced: ${customersSynced}`);
+      console.log(`[QloApps Pull]   Failed: ${customersFailed}`);
+
+      // Phase 3: Reservations/Bookings
+      console.log('[QloApps Pull] 📅 PHASE 3: Syncing Reservations...');
+      const bookings = await this.pullBookings(options);
+      const bookingResults = await this.syncBookingsToPms(bookings);
+      
+      const reservationsProcessed = bookingResults.length;
+      const reservationsCreated = bookingResults.filter(r => r.action === 'created').length;
+      const reservationsUpdated = bookingResults.filter(r => r.action === 'updated').length;
+      const reservationsFailed = bookingResults.filter(r => !r.success).length;
+      
+      console.log('[QloApps Pull] ✓ Reservations Phase Complete:');
+      console.log(`[QloApps Pull]   Processed: ${reservationsProcessed}`);
+      console.log(`[QloApps Pull]   Created: ${reservationsCreated}`);
+      console.log(`[QloApps Pull]   Updated: ${reservationsUpdated}`);
+      console.log(`[QloApps Pull]   Failed: ${reservationsFailed}`);
+
+      const durationMs = Date.now() - startTime;
+      const success = roomTypesFailed === 0 && customersFailed === 0 && reservationsFailed === 0;
+
+      console.log('[QloApps Pull] ========================================');
+      console.log(`[QloApps Pull] 3-Phase Sync ${success ? 'COMPLETED' : 'COMPLETED WITH ERRORS'}`);
+      console.log(`[QloApps Pull] Duration: ${(durationMs / 1000).toFixed(2)}s`);
+      console.log('[QloApps Pull] ========================================');
+
+      return {
+        success,
+        roomTypes: {
+          processed: roomTypesProcessed,
+          synced: roomTypesSynced,
+          failed: roomTypesFailed,
+        },
+        customers: {
+          processed: customersProcessed,
+          synced: customersSynced,
+          failed: customersFailed,
+        },
+        reservations: {
+          processed: reservationsProcessed,
+          created: reservationsCreated,
+          updated: reservationsUpdated,
+          failed: reservationsFailed,
+        },
+        durationMs,
+      };
+    } catch (error) {
+      const durationMs = Date.now() - startTime;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      console.error('[QloApps Pull] ❌ 3-Phase Sync Failed:', errorMessage);
+      console.log('[QloApps Pull] ========================================');
+
+      return {
+        success: false,
+        roomTypes: { processed: 0, synced: 0, failed: 0 },
+        customers: { processed: 0, synced: 0, failed: 0 },
+        reservations: { processed: 0, created: 0, updated: 0, failed: 0 },
+        durationMs,
+        error: errorMessage,
+      };
+    }
+  }
+
+  /**
    * Sync a single booking to PMS
    */
   private async syncSingleBooking(booking: QloAppsBooking): Promise<BookingSyncResult> {
@@ -163,8 +327,8 @@ export class QloAppsPullSyncService {
     // Check if booking already exists in PMS
     const existingMapping = await db('qloapps_reservation_mappings')
       .where({
-        qloapps_config_id: this.configId,
-        qloapps_booking_id: booking.id.toString(),
+        property_id: this.propertyId,
+        qloapps_order_id: booking.id.toString(),
       })
       .first();
 
@@ -181,8 +345,8 @@ export class QloAppsPullSyncService {
 
     const roomTypeMapping = await db('qloapps_room_type_mappings')
       .where({
-        qloapps_config_id: this.configId,
-        qloapps_room_type_id: firstRoomType.id_room_type.toString(),
+        property_id: this.propertyId,
+        qloapps_product_id: firstRoomType.id_room_type.toString(),
         is_active: true,
       })
       .first();
@@ -197,25 +361,82 @@ export class QloAppsPullSyncService {
       };
     }
 
-    // Find or create guest
-    const guestResult = await this.guestMatchingService.findOrCreateGuestFromBooking(
-      booking.customer_detail
-    );
+    // Try to find existing customer mapping first
+    let guestId: string;
+    let matchSource: string;
 
-    console.log(`[QloApps Pull] Booking ${booking.id}: Guest ${guestResult.guestId} (${guestResult.matchSource})`);
+    // Check if we have a customer mapping for this booking's customer
+    if (booking.id_customer > 0) {
+      const customerMapping = await db('qloapps_customer_mappings')
+        .where({
+          property_id: this.propertyId,
+          qloapps_customer_id: booking.id_customer.toString(),
+          is_active: true,
+        })
+        .first();
+
+      if (customerMapping) {
+        guestId = customerMapping.local_guest_id;
+        matchSource = 'customer_mapping';
+        console.log(`[QloApps Pull] Booking ${booking.id}: Found mapped customer ${booking.id_customer} -> Guest ${guestId}`);
+      }
+    }
+
+    // If no customer mapping found, create guest from booking data
+    if (!guestId) {
+      // Handle missing names in booking data by creating a guest name from email or other available info
+      const customerDetail = { ...booking.customer_detail };
+
+      // If no first/last name, create a name from email prefix or use "Booking Guest"
+      if (!customerDetail.firstname && !customerDetail.lastname) {
+        if (customerDetail.email) {
+          // Use email prefix as first name
+          const emailPrefix = customerDetail.email.split('@')[0];
+          customerDetail.firstname = emailPrefix;
+          customerDetail.lastname = 'Guest';
+        } else {
+          // Fallback for cases with no email
+          customerDetail.firstname = 'Booking';
+          customerDetail.lastname = 'Guest';
+        }
+      }
+
+      const guestResult = await this.guestMatchingService.findOrCreateGuestFromBooking(
+        customerDetail
+      );
+
+      guestId = guestResult.guestId;
+      matchSource = guestResult.matchSource || 'new';
+      console.log(`[QloApps Pull] Booking ${booking.id}: Created guest ${guestId} (${matchSource})`);
+
+      // Create customer mapping for future bookings from this customer
+      if (booking.id_customer > 0) {
+        try {
+          await this.customerSyncService.createMapping(
+            booking.id_customer,
+            guestId,
+            'booking' // matchType
+          );
+          console.log(`[QloApps Pull] Booking ${booking.id}: Created customer mapping ${booking.id_customer} -> ${guestId}`);
+        } catch (mappingError) {
+          // Log but don't fail the booking sync if mapping creation fails
+          console.warn(`[QloApps Pull] Booking ${booking.id}: Failed to create customer mapping:`, mappingError);
+        }
+      }
+    }
 
     // Map booking to PMS reservation format
     const reservationData = mapQloAppsBookingToPms(
       booking,
-      roomTypeMapping.pms_room_type_id,
-      guestResult.guestId
+      roomTypeMapping.local_room_type_id,
+      guestId
     );
 
     if (existingMapping) {
       // Update existing reservation
       return await this.updateExistingReservation(
         booking,
-        existingMapping.pms_reservation_id,
+        existingMapping.local_reservation_id,
         reservationData
       );
     } else {
@@ -223,7 +444,7 @@ export class QloAppsPullSyncService {
       return await this.createNewReservation(
         booking,
         reservationData,
-        guestResult.guestId
+        guestId
       );
     }
   }
@@ -254,7 +475,6 @@ export class QloAppsPullSyncService {
         num_adult: reservationData.num_adult,
         num_child: reservationData.num_child,
         channel: reservationData.channel,
-        qloapps_booking_id: booking.id.toString(),
       })
       .returning(['id']);
 
@@ -267,11 +487,13 @@ export class QloAppsPullSyncService {
 
     // Create mapping record
     await db('qloapps_reservation_mappings').insert({
-      qloapps_config_id: this.configId,
-      pms_reservation_id: reservation.id,
-      qloapps_booking_id: booking.id.toString(),
-      sync_direction: 'pull',
-      last_sync_at: new Date(),
+      property_id: this.propertyId,
+      local_reservation_id: reservation.id,
+      qloapps_order_id: booking.id.toString(),
+      qloapps_hotel_id: this.hotelId.toString(),
+      source: 'qloapps',
+      last_synced_at: new Date(),
+      last_sync_status: 'success',
     });
 
     console.log(`[QloApps Pull] Created reservation ${reservation.id} for booking ${booking.id}`);
@@ -311,6 +533,24 @@ export class QloAppsPullSyncService {
       };
     }
 
+    // Timestamp-based conflict resolution: Only update if QloApps data is newer
+    const qloAppsUpdatedAt = new Date(booking.date_upd || booking.date_add || 0);
+    const pmsUpdatedAt = new Date(existing.updated_at || existing.created_at || 0);
+
+    if (pmsUpdatedAt > qloAppsUpdatedAt) {
+      console.log(
+        `[QloApps Pull] Skipping update for reservation ${reservationId}: ` +
+        `PMS data (${pmsUpdatedAt.toISOString()}) is newer than QloApps data (${qloAppsUpdatedAt.toISOString()})`
+      );
+      return {
+        success: false,
+        qloAppsBookingId: booking.id,
+        pmsReservationId: reservationId,
+        action: 'skipped',
+        error: 'PMS data is newer (conflict resolution)',
+      };
+    }
+
     // Update reservation
     await db('reservations')
       .where({ id: reservationId })
@@ -328,12 +568,12 @@ export class QloAppsPullSyncService {
     // Update mapping record
     await db('qloapps_reservation_mappings')
       .where({
-        qloapps_config_id: this.configId,
-        qloapps_booking_id: booking.id.toString(),
+        property_id: this.propertyId,
+        qloapps_order_id: booking.id.toString(),
       })
       .update({
-        last_sync_at: new Date(),
-        sync_direction: 'pull',
+        last_synced_at: new Date(),
+        last_sync_status: 'success',
       });
 
     console.log(`[QloApps Pull] Updated reservation ${reservationId}`);
@@ -366,7 +606,7 @@ export class QloAppsPullSyncService {
         // Get last successful sync time
         const syncState = await db('qloapps_sync_state')
           .where({
-            qloapps_config_id: this.configId,
+            property_id: this.propertyId,
             entity_type: 'reservation',
           })
           .first();
@@ -473,17 +713,16 @@ export class QloAppsPullSyncService {
   ): Promise<void> {
     const existing = await db('qloapps_sync_state')
       .where({
-        qloapps_config_id: this.configId,
+        property_id: this.propertyId,
         entity_type: entityType,
       })
       .first();
 
     const now = new Date();
     const updates = {
-      last_sync_at: now,
+      last_successful_sync: success ? now : undefined,
       last_sync_success: success,
       last_sync_error: success ? null : errorMessage,
-      consecutive_failures: success ? 0 : (existing?.consecutive_failures || 0) + 1,
       updated_at: now,
     };
 
@@ -493,7 +732,7 @@ export class QloAppsPullSyncService {
         .update(updates);
     } else {
       await db('qloapps_sync_state').insert({
-        qloapps_config_id: this.configId,
+        property_id: this.propertyId,
         entity_type: entityType,
         ...updates,
       });
@@ -516,7 +755,7 @@ export class QloAppsPullSyncService {
     completedAt: Date;
   }): Promise<void> {
     await db('qloapps_sync_logs').insert({
-      qloapps_config_id: this.configId,
+      property_id: this.propertyId,
       sync_type: result.syncType,
       direction: 'pull',
       status: result.success ? 'success' : 'failed',

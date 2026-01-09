@@ -20,6 +20,12 @@ import {
   unmapRoomHandler,
   autoCreateRoomsHandler,
 } from './beds24_rooms_controller.js';
+import {
+  getChannelManagerStatusHandler,
+  switchChannelManagerHandler,
+  testQloAppsConnectionHandler,
+  setupQloAppsConnectionHandler,
+} from './channel_manager_controller.js';
 
 const router = Router();
 
@@ -92,6 +98,42 @@ router.post(
   requireRole('ADMIN', 'SUPER_ADMIN'),
   autoCreateRoomsHandler,
 );
+
+// ============================================================================
+// Channel Manager Routes
+// ============================================================================
+
+// Get channel manager status (which is active, what's configured)
+router.get(
+  '/settings/channel-manager',
+  requireRole('ADMIN', 'SUPER_ADMIN'),
+  getChannelManagerStatusHandler,
+);
+
+// Switch active channel manager
+router.post(
+  '/settings/channel-manager/switch',
+  requireRole('ADMIN', 'SUPER_ADMIN'),
+  switchChannelManagerHandler,
+);
+
+// Test QloApps connection
+router.post(
+  '/settings/channel-manager/test-qloapps',
+  requireRole('ADMIN', 'SUPER_ADMIN'),
+  testQloAppsConnectionHandler,
+);
+
+// Setup QloApps configuration
+router.post(
+  '/settings/channel-manager/setup-qloapps',
+  requireRole('ADMIN', 'SUPER_ADMIN'),
+  setupQloAppsConnectionHandler,
+);
+
+// ============================================================================
+// Data Management Routes
+// ============================================================================
 
 // Data management routes
 router.post(

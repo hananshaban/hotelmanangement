@@ -9,13 +9,12 @@ import type { Knex } from 'knex';
  * - Connection settings (base URL, encrypted API key)
  * - QloApps hotel ID for API calls
  * - Sync configuration flags (enable/disable different sync types)
- * - Status tracking (last sync, errors, consecutive failures for circuit breaker)
+ * - Status tracking (last sync, errors)
  * 
  * Design decisions:
  * - Single config per property (enforced by unique constraint)
  * - API key encrypted at application level (not database level)
  * - Separate flags for inbound/outbound reservation sync
- * - Consecutive failure tracking enables circuit breaker pattern
  * - Default property_id matches hotel_settings fixed UUID
  */
 export async function up(knex: Knex): Promise<void> {
@@ -61,7 +60,7 @@ export async function up(knex: Knex): Promise<void> {
     table
       .integer('sync_interval_minutes')
       .notNullable()
-      .defaultTo(15)
+      .defaultTo(5)
       .comment('Interval for scheduled sync operations (5-60 minutes)');
     
     // Master sync switch
@@ -110,18 +109,6 @@ export async function up(knex: Knex): Promise<void> {
       .text('last_sync_error')
       .comment('Error message from last failed sync attempt');
     
-    // Consecutive failure count (for circuit breaker pattern)
-    table
-      .integer('consecutive_failures')
-      .notNullable()
-      .defaultTo(0)
-      .comment('Count of consecutive sync failures, reset on success');
-    
-    // Circuit breaker: when to retry after being tripped
-    table
-      .timestamp('circuit_breaker_until', { useTz: true })
-      .comment('If set, sync is paused until this timestamp (circuit breaker)');
-    
     // =========================================
     // Timestamps
     // =========================================
@@ -154,13 +141,6 @@ export async function up(knex: Knex): Promise<void> {
     WHERE sync_enabled = true;
   `);
 
-  // Index for finding configs ready for sync (not circuit broken)
-  await knex.schema.raw(`
-    CREATE INDEX idx_qloapps_config_ready_for_sync 
-    ON qloapps_config(sync_enabled, circuit_breaker_until) 
-    WHERE sync_enabled = true;
-  `);
-
   // =========================================
   // Check Constraints
   // =========================================
@@ -172,19 +152,8 @@ export async function up(knex: Knex): Promise<void> {
     CHECK (sync_interval_minutes >= 5 AND sync_interval_minutes <= 60);
   `);
 
-  // Validate consecutive_failures is non-negative
-  await knex.schema.raw(`
-    ALTER TABLE qloapps_config 
-    ADD CONSTRAINT check_qloapps_config_failures 
-    CHECK (consecutive_failures >= 0);
-  `);
-
-  // Validate base_url starts with http:// or https://
-  await knex.schema.raw(`
-    ALTER TABLE qloapps_config 
-    ADD CONSTRAINT check_qloapps_config_base_url 
-    CHECK (base_url ~ '^https?://');
-  `);
+  // Note: base_url validation is handled at application level for better error messages
+  // PostgreSQL regex constraints are too strict and reject valid URLs
 }
 
 export async function down(knex: Knex): Promise<void> {

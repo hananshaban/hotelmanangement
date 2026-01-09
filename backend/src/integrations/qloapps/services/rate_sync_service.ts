@@ -96,10 +96,10 @@ export class QloAppsRateSyncService {
   }>> {
     const mappings = await db('qloapps_room_type_mappings')
       .where({
-        qloapps_config_id: this.configId,
+        property_id: this.propertyId,
         is_active: true,
       })
-      .select('pms_room_type_id', 'qloapps_room_type_id');
+      .select('local_room_type_id', 'qloapps_product_id');
 
     const result: Array<{
       pmsRoomTypeId: string;
@@ -109,14 +109,14 @@ export class QloAppsRateSyncService {
 
     for (const mapping of mappings) {
       const roomType = await db('room_types')
-        .where({ id: mapping.pms_room_type_id })
+        .where({ id: mapping.local_room_type_id })
         .whereNull('deleted_at')
         .first();
 
       if (roomType) {
         result.push({
-          pmsRoomTypeId: mapping.pms_room_type_id,
-          qloAppsRoomTypeId: parseInt(mapping.qloapps_room_type_id, 10),
+          pmsRoomTypeId: mapping.local_room_type_id,
+          qloAppsRoomTypeId: parseInt(mapping.qloapps_product_id, 10),
           roomTypeName: roomType.name,
         });
       }
@@ -312,17 +312,16 @@ export class QloAppsRateSyncService {
   ): Promise<void> {
     const existing = await db('qloapps_sync_state')
       .where({
-        qloapps_config_id: this.configId,
+        property_id: this.propertyId,
         entity_type: entityType,
       })
       .first();
 
     const now = new Date();
     const updates = {
-      last_sync_at: now,
+      last_successful_sync: success ? now : undefined,
       last_sync_success: success,
       last_sync_error: success ? null : errorMessage,
-      consecutive_failures: success ? 0 : (existing?.consecutive_failures || 0) + 1,
       updated_at: now,
     };
 
@@ -332,7 +331,7 @@ export class QloAppsRateSyncService {
         .update(updates);
     } else {
       await db('qloapps_sync_state').insert({
-        qloapps_config_id: this.configId,
+        property_id: this.propertyId,
         entity_type: entityType,
         ...updates,
       });
@@ -355,7 +354,7 @@ export class QloAppsRateSyncService {
     completedAt: Date;
   }): Promise<void> {
     await db('qloapps_sync_logs').insert({
-      qloapps_config_id: this.configId,
+      property_id: this.propertyId,
       sync_type: result.syncType,
       direction: 'push',
       status: result.success ? 'success' : 'failed',

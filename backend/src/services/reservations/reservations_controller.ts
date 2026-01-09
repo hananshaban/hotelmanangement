@@ -5,15 +5,81 @@ import type {
   UpdateReservationRequest,
   ReservationResponse,
 } from './reservations_types.js';
-import {
-  queueReservationSyncHook,
-  queueReservationCancelHook,
-  queueRoomAvailabilitySyncHook,
-} from '../../integrations/beds24/hooks/sync_hooks.js';
+// Beds24 hooks disabled - QloApps is now the primary channel manager
+// import {
+//   queueReservationSyncHook,
+//   queueReservationCancelHook,
+//   queueRoomAvailabilitySyncHook,
+// } from '../../integrations/beds24/hooks/sync_hooks.js';
+import { channelManagerService } from '../../integrations/channel-manager/index.js';
 import { RoomTypeAvailabilityService } from '../room_types/room_type_availability_service.js';
 import { logCreate, logUpdate, logDelete, logAction } from '../audit/audit_utils.js';
 
 const availabilityService = new RoomTypeAvailabilityService();
+
+// ============================================================================
+// Channel Manager Sync Helper
+// ============================================================================
+
+/**
+ * Queue reservation sync to the active channel manager
+ * - QloApps only (Beds24 disabled)
+ */
+async function queueReservationSync(
+  reservationId: string,
+  action: 'create' | 'update' | 'cancel',
+  sourceToSkip?: string
+): Promise<void> {
+  try {
+    const activeManager = channelManagerService.getActiveChannelManager();
+
+    // Skip if reservation came from QloApps (prevent sync loop)
+    if (sourceToSkip === 'QloApps' && activeManager === 'qloapps') {
+      return;
+    }
+
+    // Only use QloApps (Beds24 disabled)
+    if (activeManager === 'qloapps') {
+      await channelManagerService.syncReservation({ reservationId, action });
+    }
+    // Note: Beds24 integration disabled - uncomment imports above to re-enable
+  } catch (error) {
+    console.error(`[ReservationController] Failed to queue ${action} sync for ${reservationId}:`, error);
+    // Don't rethrow - sync failures shouldn't break reservation operations
+  }
+}
+
+/**
+ * Queue room availability sync to the active channel manager
+ * - QloApps only (Beds24 disabled)
+ */
+async function queueAvailabilitySync(
+  roomTypeId: string,
+  dateFrom?: string,
+  dateTo?: string
+): Promise<void> {
+  try {
+    const activeManager = channelManagerService.getActiveChannelManager();
+
+    // Only use QloApps (Beds24 disabled)
+    if (activeManager === 'qloapps') {
+      const from = dateFrom ?? new Date().toISOString().split('T')[0];
+      const to = dateTo ?? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      await channelManagerService.syncAvailability({ 
+        roomTypeId, 
+        dateFrom: from as string, 
+        dateTo: to as string 
+      });
+    }
+    // Note: Beds24 integration disabled
+  } catch (error) {
+    console.error(`[ReservationController] Failed to queue availability sync:`, error);
+  }
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
 
 // Helper function to check for overlapping reservations
 async function hasOverlappingReservation(
@@ -481,15 +547,13 @@ export async function createReservationHandler(
       source,
     }).catch((err) => console.error('Audit log failed:', err));
 
-    // Queue sync to Beds24 (non-blocking, fire-and-forget)
-    // This ensures reservations created in PMS are synced to Beds24
-    queueReservationSyncHook(reservation.id, 'create').catch((err) => {
+    // Queue sync to active channel manager (non-blocking, fire-and-forget)
+    // This ensures reservations created in PMS are synced to the channel manager
+    queueReservationSync(reservation.id, 'create', source).catch((err) => {
       console.error(
         `[ReservationController] Failed to queue sync for reservation ${reservation.id}:`,
         err
       );
-      // Don't throw - sync failures shouldn't break reservation creation
-      // The reservation is already created and returned to the user
     });
   } catch (error) {
     next(error);
@@ -614,14 +678,17 @@ export async function updateReservationHandler(
       }
     });
 
-    // Queue Beds24 sync (non-blocking)
-    if (existing.source !== 'Beds24') {
-      queueReservationSyncHook(id, 'update').catch((err) => {
-        console.error('Failed to queue reservation sync:', err);
-      });
-      // Sync room availability if room or dates changed
-      if (updates.room_id || updates.check_in || updates.check_out) {
-        queueRoomAvailabilitySyncHook(roomId).catch((err) => {
+    // Queue channel manager sync (non-blocking)
+    queueReservationSync(id, 'update', existing.source).catch((err) => {
+      console.error('Failed to queue reservation sync:', err);
+    });
+
+    // Sync room availability if room or dates changed
+    if (updates.room_id || updates.check_in || updates.check_out) {
+      // Get room type ID for availability sync
+      const roomTypeId = existing.room_type_id;
+      if (roomTypeId) {
+        queueAvailabilitySync(roomTypeId).catch((err) => {
           console.error('Failed to queue room availability sync:', err);
         });
       }
@@ -723,13 +790,14 @@ export async function deleteReservationHandler(
       await db('rooms').where({ id: reservation.room_id }).update({ status: 'Available' });
     }
 
-    // Queue Beds24 sync for cancellation (non-blocking)
-    if (reservation.source !== 'Beds24') {
-      queueReservationCancelHook(id).catch((err) => {
-        console.error('Failed to queue reservation cancel sync:', err);
-      });
-      // Sync room availability
-      queueRoomAvailabilitySyncHook(reservation.room_id).catch((err) => {
+    // Queue channel manager sync for cancellation (non-blocking)
+    queueReservationSync(id, 'cancel', reservation.source).catch((err) => {
+      console.error('Failed to queue reservation cancel sync:', err);
+    });
+
+    // Sync room availability
+    if (reservation.room_type_id) {
+      queueAvailabilitySync(reservation.room_type_id).catch((err) => {
         console.error('Failed to queue room availability sync:', err);
       });
     }

@@ -48,9 +48,6 @@ export interface QloAppsStoredConfig {
   syncRates: boolean;
   lastSuccessfulSync: Date | null;
   lastSyncError: string | null;
-  consecutiveFailures: number;
-  circuitState: 'closed' | 'open' | 'half_open';
-  circuitOpenedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -241,7 +238,137 @@ export type QloAppsBookingStatusCode = 1 | 2 | 3 | 4;
 export type QloAppsPaymentStatusCode = 1 | 2 | 3;
 
 /**
- * QloApps booking (order in PrestaShop terms)
+ * Raw booking response from QloApps room_bookings endpoint (flat structure)
+ * This endpoint returns flattened booking data with customer and room info directly in the object
+ */
+export interface QloAppsBookingRaw {
+  /** Booking ID */
+  id: number;
+
+  /** Product/Room Type ID */
+  id_product?: number;
+
+  /** Hotel ID */
+  id_hotel?: number;
+
+  /** Order ID */
+  id_order?: number;
+
+  /** Order Detail ID */
+  id_order_detail?: number;
+
+  /** Cart ID */
+  id_cart?: number;
+
+  /** Room ID */
+  id_room?: number;
+
+  /** Customer ID */
+  id_customer?: number;
+
+  /** Booking type */
+  booking_type?: number;
+
+  /** Status ID (1=confirmed, 2=pending, etc.) */
+  id_status?: number;
+
+  /** Comment/Notes */
+  comment?: string;
+
+  /** Check-in time */
+  check_in?: string;
+
+  /** Check-out time */
+  check_out?: string;
+
+  /** Check-in date (YYYY-MM-DD HH:mm:ss) */
+  date_from?: string;
+
+  /** Check-out date (YYYY-MM-DD HH:mm:ss) */
+  date_to?: string;
+
+  /** Total price excluding tax */
+  total_price_tax_excl?: string;
+
+  /** Total price including tax */
+  total_price_tax_incl?: string;
+
+  /** Total paid amount */
+  total_paid_amount?: string;
+
+  /** Refund status */
+  is_refunded?: number;
+
+  /** Cancellation status */
+  is_cancelled?: number;
+
+  /** Back order status */
+  is_back_order?: number;
+
+  /** Room number */
+  room_num?: string;
+
+  /** Room type name */
+  room_type_name?: string;
+
+  /** Hotel name */
+  hotel_name?: string;
+
+  /** City */
+  city?: string;
+
+  /** State */
+  state?: string;
+
+  /** Country */
+  country?: string;
+
+  /** ZIP code */
+  zipcode?: string;
+
+  /** Phone number */
+  phone?: string;
+
+  /** Email address */
+  email?: string;
+
+  /** Check-in time */
+  check_in_time?: string;
+
+  /** Check-out time */
+  check_out_time?: string;
+
+  /** Planned check-out datetime */
+  planned_check_out?: string;
+
+  /** Number of adults */
+  adults?: number;
+
+  /** Number of children */
+  children?: number;
+
+  /** Child ages JSON string */
+  child_ages?: string;
+
+  /** Date added */
+  date_add?: string;
+
+  /** Date updated */
+  date_upd?: string;
+
+  /** Legacy associations structure (for backward compatibility with other endpoints) */
+  associations?: {
+    room_types?: QloAppsBookingRoomType[] | { room_type: QloAppsBookingRoomType | QloAppsBookingRoomType[] };
+    customer_detail?: QloAppsBookingCustomer;
+  };
+
+  /** Legacy direct fields (for backward compatibility) */
+  room_types?: QloAppsBookingRoomType[];
+  customer_detail?: QloAppsBookingCustomer;
+}
+
+/**
+ * QloApps booking (order in PrestaShop terms) - Normalized format
  */
 export interface QloAppsBooking {
   /** Booking/order ID */

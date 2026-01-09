@@ -448,6 +448,20 @@ export const api = {
         body: settingsData,
       }),
 
+    // Channel Manager endpoints
+    getChannelManagerStatus: () => request('/v1/settings/channel-manager'),
+
+    switchChannelManager: (channelManager) =>
+      request('/v1/settings/channel-manager/switch', {
+        method: 'POST',
+        body: { channelManager },
+      }),
+
+    testQloAppsConnection: () =>
+      request('/v1/settings/channel-manager/test-qloapps', {
+        method: 'POST',
+      }),
+
     // Beds24 endpoints
     getBeds24Config: () => request('/v1/settings/beds24'),
 
@@ -516,6 +530,41 @@ export const api = {
       request(`/v1/users/${id}`, {
         method: 'DELETE',
       }),
+  },
+
+  // Channel Manager endpoints
+  channelManagers: {
+    getStatus: () => request('/v1/settings/channel-manager'),
+    
+    testConnection: () =>
+      request('/v1/settings/channel-manager/test-qloapps', {
+        method: 'POST',
+      }),
+    
+    setupQloApps: (configData) =>
+      request('/v1/settings/channel-manager/setup-qloapps', {
+        method: 'POST',
+        body: configData,
+      }),
+    
+    getQloAppsConfig: () => request('/v1/qloapps/config'),
+    
+    deleteQloAppsConfig: () =>
+      request('/v1/qloapps/config', {
+        method: 'DELETE',
+      }),
+    
+    // Pull sync endpoints
+    triggerPullSync: (options = {}) =>
+      request('/v1/qloapps/sync', {
+        method: 'POST',
+        body: {
+          syncType: options.fullSync ? 'full' : 'reservations_inbound',
+          options,
+        },
+      }),
+    
+    getSyncStatus: () => request('/v1/qloapps/sync/status'),
   },
 };
 

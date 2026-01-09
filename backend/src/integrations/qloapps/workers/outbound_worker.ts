@@ -191,7 +191,7 @@ export class QloAppsOutboundWorker extends QloAppsBaseConsumer {
 
     // Update booking status to cancelled in QloApps
     try {
-      await client.cancelBooking(parseInt(mapping.qloapps_booking_id, 10));
+      await client.cancelBooking(parseInt(mapping.qloapps_order_id, 10));
 
       console.log(
         `[QloApps Outbound] Successfully cancelled reservation ${reservationId} in QloApps`
@@ -212,7 +212,7 @@ export class QloAppsOutboundWorker extends QloAppsBaseConsumer {
         direction: 'outbound',
         entityType: 'reservation',
         localEntityId: reservationId,
-        qloAppsEntityId: parseInt(mapping.qloapps_booking_id, 10),
+        qloAppsEntityId: parseInt(mapping.qloapps_order_id, 10),
         operation: 'cancel',
         success: true,
       });

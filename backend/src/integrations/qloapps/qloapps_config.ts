@@ -163,7 +163,9 @@ export const QLOAPPS_CONFIG = {
   ENDPOINTS: {
     /** Root endpoint - lists available resources */
     ROOT: '/api/',
-    /** Bookings/Orders endpoint */
+    /** Room Bookings endpoint (use this instead of bookings for complete data) */
+    ROOM_BOOKINGS: '/api/room_bookings',
+    /** Bookings/Orders endpoint (legacy - use room_bookings instead) */
     BOOKINGS: '/api/bookings',
     /** Room Types (Products) endpoint */
     ROOM_TYPES: '/api/room_types',
@@ -208,6 +210,20 @@ export const QLOAPPS_CONFIG = {
     CUSTOMERS_PULL: 'qloapps_customers_pull',
     CUSTOMERS_PUSH: 'qloapps_customers_push',
     FULL_SYNC: 'qloapps_full_sync',
+  } as const,
+
+  // ============================================================================
+  // Sync Options
+  // ============================================================================
+
+  /**
+   * Configuration options for sync operations.
+   */
+  SYNC_OPTIONS: {
+    /** Always fetch individual bookings for complete data (slower but more reliable) */
+    ALWAYS_ENRICH_BOOKINGS: true,
+    /** Maximum concurrent enrichment requests */
+    MAX_CONCURRENT_ENRICHMENT: 5,
   } as const,
 
   // ============================================================================

@@ -77,10 +77,14 @@ export interface RoomTypeSyncOptions {
 export class QloAppsRoomTypeSyncService {
   private client: QloAppsClient;
   private configId: string;
+  private propertyId: string;
+  private hotelId: number;
 
-  constructor(client: QloAppsClient, configId: string) {
+  constructor(client: QloAppsClient, configId: string, propertyId: string, hotelId: number) {
     this.client = client;
     this.configId = configId;
+    this.propertyId = propertyId;
+    this.hotelId = hotelId;
   }
 
   /**
@@ -102,7 +106,7 @@ export class QloAppsRoomTypeSyncService {
       hotelId: parseInt(config.qloapps_hotel_id, 10),
     });
 
-    return new QloAppsRoomTypeSyncService(client, configId);
+    return new QloAppsRoomTypeSyncService(client, configId, config.property_id, parseInt(config.qloapps_hotel_id, 10));
   }
 
   /**
@@ -133,13 +137,13 @@ export class QloAppsRoomTypeSyncService {
     isActive: boolean;
   }>> {
     const mappings = await db('qloapps_room_type_mappings')
-      .where({ qloapps_config_id: this.configId })
-      .select('id', 'pms_room_type_id', 'qloapps_room_type_id', 'is_active');
+      .where({ property_id: this.propertyId })
+      .select('id', 'local_room_type_id', 'qloapps_product_id', 'is_active');
 
     return mappings.map(m => ({
       id: m.id,
-      pmsRoomTypeId: m.pms_room_type_id,
-      qloAppsRoomTypeId: parseInt(m.qloapps_room_type_id, 10),
+      pmsRoomTypeId: m.local_room_type_id,
+      qloAppsRoomTypeId: parseInt(m.qloapps_product_id, 10),
       isActive: m.is_active,
     }));
   }
@@ -229,8 +233,8 @@ export class QloAppsRoomTypeSyncService {
     // Check for existing mapping
     const existing = await db('qloapps_room_type_mappings')
       .where({
-        qloapps_config_id: this.configId,
-        pms_room_type_id: pmsRoomTypeId,
+        property_id: this.propertyId,
+        local_room_type_id: pmsRoomTypeId,
       })
       .first();
 
@@ -239,19 +243,22 @@ export class QloAppsRoomTypeSyncService {
       await db('qloapps_room_type_mappings')
         .where({ id: existing.id })
         .update({
-          qloapps_room_type_id: qloAppsRoomTypeId.toString(),
+          qloapps_product_id: qloAppsRoomTypeId.toString(),
           is_active: true,
           updated_at: new Date(),
-          last_sync_at: new Date(),
+          last_synced_at: new Date(),
         });
     } else {
       // Create new mapping
       await db('qloapps_room_type_mappings').insert({
-        qloapps_config_id: this.configId,
-        pms_room_type_id: pmsRoomTypeId,
-        qloapps_room_type_id: qloAppsRoomTypeId.toString(),
+        property_id: this.propertyId,
+        local_room_type_id: pmsRoomTypeId,
+        qloapps_product_id: qloAppsRoomTypeId.toString(),
+        qloapps_hotel_id: this.hotelId.toString(),
         is_active: true,
-        last_sync_at: new Date(),
+        sync_direction: 'bidirectional',
+        last_synced_at: new Date(),
+        last_sync_status: 'success',
       });
     }
   }
@@ -262,8 +269,8 @@ export class QloAppsRoomTypeSyncService {
   async deleteMapping(pmsRoomTypeId: string): Promise<void> {
     await db('qloapps_room_type_mappings')
       .where({
-        qloapps_config_id: this.configId,
-        pms_room_type_id: pmsRoomTypeId,
+        property_id: this.propertyId,
+        local_room_type_id: pmsRoomTypeId,
       })
       .update({
         is_active: false,
@@ -278,13 +285,22 @@ export class QloAppsRoomTypeSyncService {
   async pullRoomTypes(): Promise<RoomTypeSyncResult[]> {
     const results: RoomTypeSyncResult[] = [];
 
+    console.log('[QloApps RoomType] 🔄 Starting room type pull sync...');
+    
     const qloAppsRoomTypes = await this.getQloAppsRoomTypes();
+    console.log(`[QloApps RoomType] 📥 Fetched ${qloAppsRoomTypes.length} room types from QloApps`);
+    
     const existingMappings = await this.getExistingMappings();
+    console.log(`[QloApps RoomType] 🔗 Found ${existingMappings.length} existing mappings`);
+    
     const mappedQloAppsIds = new Set(existingMappings.map(m => m.qloAppsRoomTypeId));
 
     for (const qloAppsType of qloAppsRoomTypes) {
+      console.log(`[QloApps RoomType] 📝 Processing QloApps room type ${qloAppsType.id}: "${qloAppsType.name}"`);
+      
       if (mappedQloAppsIds.has(qloAppsType.id)) {
         // Already mapped, skip
+        console.log(`[QloApps RoomType] ⏭️  Room type ${qloAppsType.id} already mapped, skipping`);
         results.push({
           success: true,
           qloAppsRoomTypeId: qloAppsType.id,
@@ -295,13 +311,18 @@ export class QloAppsRoomTypeSyncService {
 
       try {
         // Create new PMS room type
+        console.log(`[QloApps RoomType] 🏗️  Creating new PMS room type from QloApps room type ${qloAppsType.id}...`);
         const roomTypeData = mapQloAppsRoomTypeToPms(qloAppsType);
+        console.log(`[QloApps RoomType] 📊 Room type data:`, JSON.stringify(roomTypeData, null, 2));
 
         const [newRoomType] = await db('room_types')
           .insert(roomTypeData)
-          .returning(['id']);
+          .returning(['id', 'name', 'room_type', 'qty', 'price_per_night']);
+
+        console.log(`[QloApps RoomType] ✅ Created PMS room type: ${JSON.stringify(newRoomType)}`);
 
         // Create mapping
+        console.log(`[QloApps RoomType] 🔗 Creating mapping: PMS ${newRoomType.id} <-> QloApps ${qloAppsType.id}`);
         await this.createMapping(newRoomType.id, qloAppsType.id);
 
         results.push({
@@ -311,8 +332,10 @@ export class QloAppsRoomTypeSyncService {
           action: 'created',
         });
 
-        console.log(`[QloApps RoomType] Created PMS room type ${newRoomType.id} from QloApps ${qloAppsType.id}`);
+        console.log(`[QloApps RoomType] ✨ Successfully synced room type ${newRoomType.id} (QloApps ID: ${qloAppsType.id})`);
       } catch (error) {
+        console.error(`[QloApps RoomType] ❌ Failed to sync room type ${qloAppsType.id}:`, error);
+        console.error(`[QloApps RoomType] 📋 Error details:`, error instanceof Error ? error.stack : error);
         results.push({
           success: false,
           qloAppsRoomTypeId: qloAppsType.id,
@@ -321,6 +344,13 @@ export class QloAppsRoomTypeSyncService {
         });
       }
     }
+
+    console.log(`[QloApps RoomType] 🏁 Room type pull sync complete. Results: ${JSON.stringify({
+      total: results.length,
+      created: results.filter(r => r.action === 'created').length,
+      skipped: results.filter(r => r.action === 'skipped').length,
+      failed: results.filter(r => r.action === 'failed').length,
+    })}`);
 
     return results;
   }
@@ -454,17 +484,16 @@ export class QloAppsRoomTypeSyncService {
   ): Promise<void> {
     const existing = await db('qloapps_sync_state')
       .where({
-        qloapps_config_id: this.configId,
+        property_id: this.propertyId,
         entity_type: entityType,
       })
       .first();
 
     const now = new Date();
     const updates = {
-      last_sync_at: now,
+      last_successful_sync: success ? now : undefined,
       last_sync_success: success,
       last_sync_error: success ? null : errorMessage,
-      consecutive_failures: success ? 0 : (existing?.consecutive_failures || 0) + 1,
       updated_at: now,
     };
 
@@ -474,7 +503,7 @@ export class QloAppsRoomTypeSyncService {
         .update(updates);
     } else {
       await db('qloapps_sync_state').insert({
-        qloapps_config_id: this.configId,
+        property_id: this.propertyId,
         entity_type: entityType,
         ...updates,
       });
@@ -497,7 +526,7 @@ export class QloAppsRoomTypeSyncService {
     completedAt: Date;
   }): Promise<void> {
     await db('qloapps_sync_logs').insert({
-      qloapps_config_id: this.configId,
+      property_id: this.propertyId,
       sync_type: result.syncType,
       direction: 'pull',
       status: result.success ? 'success' : 'failed',

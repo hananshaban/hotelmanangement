@@ -177,8 +177,8 @@ export class QloAppsPushSyncService {
     // Check if reservation is already mapped
     const existingMapping = await db('qloapps_reservation_mappings')
       .where({
-        qloapps_config_id: this.configId,
-        pms_reservation_id: reservation.id,
+        property_id: this.propertyId,
+        local_reservation_id: reservation.id,
       })
       .first();
 
@@ -195,8 +195,8 @@ export class QloAppsPushSyncService {
 
     const roomTypeMapping = await db('qloapps_room_type_mappings')
       .where({
-        qloapps_config_id: this.configId,
-        pms_room_type_id: roomTypeId,
+        property_id: this.propertyId,
+        local_room_type_id: roomTypeId,
         is_active: true,
       })
       .first();
@@ -236,15 +236,15 @@ export class QloAppsPushSyncService {
       // Update existing booking
       return await this.updateBooking(
         reservation,
-        existingMapping.qloapps_booking_id,
-        parseInt(roomTypeMapping.qloapps_room_type_id, 10),
+        existingMapping.qloapps_order_id,
+        parseInt(roomTypeMapping.qloapps_product_id, 10),
         guest
       );
     } else {
       // Create new booking
       return await this.createBooking(
         reservation,
-        parseInt(roomTypeMapping.qloapps_room_type_id, 10),
+        parseInt(roomTypeMapping.qloapps_product_id, 10),
         guest
       );
     }
@@ -274,11 +274,13 @@ export class QloAppsPushSyncService {
 
       // Create mapping record
       await db('qloapps_reservation_mappings').insert({
-        qloapps_config_id: this.configId,
-        pms_reservation_id: reservation.id,
-        qloapps_booking_id: qloAppsBookingId.toString(),
-        sync_direction: 'push',
-        last_sync_at: new Date(),
+        property_id: this.propertyId,
+        local_reservation_id: reservation.id,
+        qloapps_order_id: qloAppsBookingId.toString(),
+        qloapps_hotel_id: this.hotelId.toString(),
+        source: 'pms',
+        last_synced_at: new Date(),
+        last_sync_status: 'success',
       });
 
       console.log(`[QloApps Push] Created booking ${qloAppsBookingId} for reservation ${reservation.id}`);
@@ -323,11 +325,11 @@ export class QloAppsPushSyncService {
       // Update mapping record
       await db('qloapps_reservation_mappings')
         .where({
-          qloapps_config_id: this.configId,
-          pms_reservation_id: reservation.id,
+          property_id: this.propertyId,
+          local_reservation_id: reservation.id,
         })
         .update({
-          last_sync_at: new Date(),
+          last_synced_at: new Date(),
           sync_direction: 'push',
         });
 
@@ -371,7 +373,7 @@ export class QloAppsPushSyncService {
         // Get last successful sync time
         const syncState = await db('qloapps_sync_state')
           .where({
-            qloapps_config_id: this.configId,
+            property_id: this.propertyId,
             entity_type: 'reservation_push',
           })
           .first();
@@ -478,17 +480,16 @@ export class QloAppsPushSyncService {
   ): Promise<void> {
     const existing = await db('qloapps_sync_state')
       .where({
-        qloapps_config_id: this.configId,
+        property_id: this.propertyId,
         entity_type: entityType,
       })
       .first();
 
     const now = new Date();
     const updates = {
-      last_sync_at: now,
+      last_successful_sync: success ? now : undefined,
       last_sync_success: success,
       last_sync_error: success ? null : errorMessage,
-      consecutive_failures: success ? 0 : (existing?.consecutive_failures || 0) + 1,
       updated_at: now,
     };
 
@@ -498,7 +499,7 @@ export class QloAppsPushSyncService {
         .update(updates);
     } else {
       await db('qloapps_sync_state').insert({
-        qloapps_config_id: this.configId,
+        property_id: this.propertyId,
         entity_type: entityType,
         ...updates,
       });
@@ -521,7 +522,7 @@ export class QloAppsPushSyncService {
     completedAt: Date;
   }): Promise<void> {
     await db('qloapps_sync_logs').insert({
-      qloapps_config_id: this.configId,
+      property_id: this.propertyId,
       sync_type: result.syncType,
       direction: 'push',
       status: result.success ? 'success' : 'failed',

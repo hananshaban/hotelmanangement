@@ -114,11 +114,13 @@ export function mapQloAppsSourceToPms(source?: string, channel?: string): string
       const channelLower = channel.toLowerCase();
       if (channelLower.includes('booking')) return 'Booking.com';
       if (channelLower.includes('expedia')) return 'Expedia';
-      if (channelLower.includes('airbnb')) return 'Airbnb';
-      if (channelLower.includes('agoda')) return 'Agoda';
-      return channel; // Return as-is if unknown
+      // For other channels not in the constraint, use 'Other'
+      if (channelLower.includes('airbnb')) return 'Other';
+      if (channelLower.includes('agoda')) return 'Other';
+      // Default OTA to 'Other' for unknown channels
+      return 'Other';
     }
-    return 'QloApps';
+    return 'Other'; // OTA without specific channel
   }
 
   // Direct bookings
@@ -126,8 +128,9 @@ export function mapQloAppsSourceToPms(source?: string, channel?: string): string
     return 'Direct';
   }
 
-  // Default to QloApps as source
-  return 'QloApps';
+  // Default to 'Other' for QloApps bookings
+  // Database constraint only allows: 'Direct', 'Beds24', 'Booking.com', 'Expedia', 'Other'
+  return 'Other';
 }
 
 /**
@@ -255,7 +258,6 @@ export function mapQloAppsBookingToPms(
   total_amount: number;
   source: string;
   special_requests: string | null;
-  qloapps_booking_id: string;
   units_requested: number;
   num_adult: number | null;
   num_child: number | null;
@@ -290,7 +292,6 @@ export function mapQloAppsBookingToPms(
     total_amount: booking.total_price || 0,
     source: mapQloAppsSourceToPms(booking.source, booking.channel),
     special_requests: booking.remarks || null,
-    qloapps_booking_id: booking.id.toString(),
     units_requested: totalRooms || 1,
     num_adult: totalAdults > 0 ? totalAdults : null,
     num_child: totalChildren > 0 ? totalChildren : null,
@@ -444,8 +445,13 @@ export function validateQloAppsBooking(booking: QloAppsBooking): {
     errors.push('Missing booking ID');
   }
 
+  // Log the actual data structure for debugging
   if (!booking.room_types || booking.room_types.length === 0) {
     errors.push('Missing room types');
+    console.warn(`[Validation] Booking ${booking.id} has no room_types. Available keys: ${Object.keys(booking).join(', ')}`);
+    if (booking.room_types === undefined) {
+      console.warn(`[Validation] Booking ${booking.id} room_types is undefined (not an empty array)`);
+    }
   } else {
     for (let i = 0; i < booking.room_types.length; i++) {
       const rt = booking.room_types[i];
@@ -467,6 +473,8 @@ export function validateQloAppsBooking(booking: QloAppsBooking): {
 
   if (!booking.customer_detail) {
     errors.push('Missing customer details');
+    console.warn(`[Validation] Booking ${booking.id} has no customer_detail. Available keys: ${Object.keys(booking).join(', ')}`);
+    console.warn(`[Validation] Booking ${booking.id} customer_detail value:`, booking.customer_detail);
   } else {
     if (!booking.customer_detail.firstname && !booking.customer_detail.lastname) {
       errors.push('Customer has no name');

@@ -8,10 +8,76 @@ import type {
   HousekeepingResponse,
   Beds24RoomType,
 } from './rooms_types.js';
-import {
-  queueRoomAvailabilitySyncHook,
-  queueRoomRatesSyncHook,
-} from '../../integrations/beds24/hooks/sync_hooks.js';
+// Beds24 hooks disabled - QloApps is now the primary channel manager
+// import {
+//   queueRoomAvailabilitySyncHook,
+//   queueRoomRatesSyncHook,
+// } from '../../integrations/beds24/hooks/sync_hooks.js';
+import { channelManagerService } from '../../integrations/channel-manager/index.js';
+
+// ============================================================================
+// Channel Manager Sync Helpers
+// ============================================================================
+
+/**
+ * Queue room availability sync to the active channel manager
+ * - QloApps only (Beds24 disabled)
+ */
+async function queueAvailabilitySync(
+  roomTypeId: string,
+  dateFrom?: string,
+  dateTo?: string
+): Promise<void> {
+  try {
+    const activeManager = channelManagerService.getActiveChannelManager();
+
+    // Only use QloApps (Beds24 disabled)
+    if (activeManager === 'qloapps') {
+      const from = dateFrom ?? new Date().toISOString().split('T')[0];
+      const to = dateTo ?? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      await channelManagerService.syncAvailability({
+        roomTypeId,
+        dateFrom: from as string,
+        dateTo: to as string,
+      });
+    }
+    // Note: Beds24 integration disabled
+  } catch (error) {
+    console.error('[RoomsController] Failed to queue availability sync:', error);
+  }
+}
+
+/**
+ * Queue room rates sync to the active channel manager
+ * - QloApps only (Beds24 disabled)
+ */
+async function queueRatesSync(
+  roomTypeId: string,
+  dateFrom?: string,
+  dateTo?: string
+): Promise<void> {
+  try {
+    const activeManager = channelManagerService.getActiveChannelManager();
+
+    // Only use QloApps (Beds24 disabled)
+    if (activeManager === 'qloapps') {
+      const from = dateFrom ?? new Date().toISOString().split('T')[0];
+      const to = dateTo ?? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      await channelManagerService.syncRates({
+        roomTypeId,
+        dateFrom: from as string,
+        dateTo: to as string,
+      });
+    }
+    // Note: Beds24 integration disabled
+  } catch (error) {
+    console.error('[RoomsController] Failed to queue rates sync:', error);
+  }
+}
+
+// ============================================================================
+// Handlers
+// ============================================================================
 
 // Get all rooms
 export async function getRoomsHandler(
@@ -353,17 +419,19 @@ export async function updateRoomHandler(
       units: Array.isArray(room.units) ? room.units : (typeof room.units === 'string' ? JSON.parse(room.units || '[]') : []),
     };
 
-    // Queue Beds24 sync if room is mapped (non-blocking)
-    if (room.beds24_room_id) {
+    // Queue channel manager sync (non-blocking)
+    // Get room type ID for sync
+    const roomTypeId = room.room_type_id;
+    if (roomTypeId) {
       // Sync availability if status changed
       if (updates.status !== undefined) {
-        queueRoomAvailabilitySyncHook(id).catch((err) => {
+        queueAvailabilitySync(roomTypeId).catch((err) => {
           console.error('Failed to queue room availability sync:', err);
         });
       }
       // Sync rates if price changed
       if (updates.price_per_night !== undefined) {
-        queueRoomRatesSyncHook(id).catch((err) => {
+        queueRatesSync(roomTypeId).catch((err) => {
           console.error('Failed to queue room rates sync:', err);
         });
       }
@@ -569,10 +637,10 @@ export async function updateRoomHousekeepingHandler(
         .update(updateData)
         .returning('*');
 
-      // Queue Beds24 availability sync only for legacy rooms (not units)
-      // Housekeeping for units is local only, not synced with Beds24
-      if (!isUnitId && room && room.beds24_room_id && (status === 'Dirty' || status === 'In Progress')) {
-        queueRoomAvailabilitySyncHook(id).catch((err) => {
+      // Queue channel manager availability sync only for legacy rooms (not units)
+      // Housekeeping for units is local only, not synced with channel manager
+      if (!isUnitId && room && room.room_type_id && (status === 'Dirty' || status === 'In Progress')) {
+        queueAvailabilitySync(room.room_type_id).catch((err) => {
           console.error('Failed to queue room availability sync:', err);
         });
       }
@@ -596,10 +664,10 @@ export async function updateRoomHousekeepingHandler(
         .insert(insertData)
         .returning('*');
 
-      // Queue Beds24 availability sync only for legacy rooms (not units)
-      // Housekeeping for units is local only, not synced with Beds24
-      if (!isUnitId && room && room.beds24_room_id && (status === 'Dirty' || status === 'In Progress')) {
-        queueRoomAvailabilitySyncHook(id).catch((err) => {
+      // Queue channel manager availability sync only for legacy rooms (not units)
+      // Housekeeping for units is local only, not synced with channel manager
+      if (!isUnitId && room && room.room_type_id && (status === 'Dirty' || status === 'In Progress')) {
+        queueAvailabilitySync(room.room_type_id).catch((err) => {
           console.error('Failed to queue room availability sync:', err);
         });
       }

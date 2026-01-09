@@ -29,7 +29,7 @@ import { decrypt } from '../../../utils/encryption.js';
 const SYNC_INTERVAL_MS = parseInt(process.env.QLOAPPS_SYNC_INTERVAL_MS || '300000', 10); // Default: 5 minutes
 const MAX_BACKOFF_MS = 15 * 60 * 1000; // 15 minutes max backoff
 const LOCK_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes - release stale locks
-const SYNC_TYPE = 'qloapps_pull';
+const SYNC_TYPE = 'qloapps_reservations_pull';
 
 // ============================================================================
 // Types
@@ -61,25 +61,23 @@ let currentBackoffMs = SYNC_INTERVAL_MS;
  * Acquire a database lock for the sync operation
  * Returns the sync ID if lock acquired, null if another sync is running
  */
-async function acquireSyncLock(configId: string): Promise<string | null> {
-  const syncType = `${SYNC_TYPE}_${configId}`;
-
+async function acquireSyncLock(configId: string, propertyId: string): Promise<string | null> {
   try {
-    // Check for any running syncs that haven't timed out
+    // Check for any running syncs of this type that haven't timed out
     const runningSync = await db('qloapps_sync_state')
-      .where('sync_type', syncType)
+      .where('sync_type', SYNC_TYPE)
       .where('status', 'running')
       .where('started_at', '>', new Date(Date.now() - LOCK_TIMEOUT_MS))
       .first();
 
     if (runningSync) {
-      console.log(`[QloApps Sync] ⏸️  Sync already running for config ${configId} (ID: ${runningSync.id})`);
+      console.log(`[QloApps Sync] ⏸️  Sync already running (ID: ${runningSync.id})`);
       return null;
     }
 
     // Mark stale running syncs as failed
     const staleCount = await db('qloapps_sync_state')
-      .where('sync_type', syncType)
+      .where('sync_type', SYNC_TYPE)
       .where('status', 'running')
       .where('started_at', '<=', new Date(Date.now() - LOCK_TIMEOUT_MS))
       .update({
@@ -89,14 +87,15 @@ async function acquireSyncLock(configId: string): Promise<string | null> {
       });
 
     if (staleCount > 0) {
-      console.log(`[QloApps Sync] 🧹 Released ${staleCount} stale sync lock(s) for config ${configId}`);
+      console.log(`[QloApps Sync] 🧹 Released ${staleCount} stale sync lock(s)`);
     }
 
     // Create new sync record
     const syncId = crypto.randomUUID();
     await db('qloapps_sync_state').insert({
       id: syncId,
-      sync_type: syncType,
+      property_id: propertyId,
+      sync_type: SYNC_TYPE,
       status: 'running',
       started_at: new Date(),
     });
@@ -127,10 +126,10 @@ async function releaseSyncLock(
     const updateData: Record<string, unknown> = {
       status: success ? 'completed' : 'failed',
       completed_at: new Date(),
-      items_processed: stats.itemsProcessed || 0,
-      items_created: stats.itemsCreated || 0,
-      items_updated: stats.itemsUpdated || 0,
-      items_failed: stats.itemsFailed || 0,
+      reservations_processed: stats.itemsProcessed || 0,
+      reservations_created: stats.itemsCreated || 0,
+      reservations_updated: stats.itemsUpdated || 0,
+      reservations_failed: stats.itemsFailed || 0,
       duration_ms: stats.durationMs || 0,
       error_message: stats.errorMessage,
     };
@@ -156,6 +155,7 @@ async function releaseSyncLock(
  */
 async function getEnabledConfigs(): Promise<Array<{
   id: string;
+  property_id: string;
   base_url: string;
   api_key_encrypted: string;
   qloapps_hotel_id: number;
@@ -165,7 +165,7 @@ async function getEnabledConfigs(): Promise<Array<{
   return db('qloapps_config')
     .where({ sync_enabled: true })
     .whereNotNull('api_key_encrypted')
-    .select('id', 'base_url', 'api_key_encrypted', 'qloapps_hotel_id', 'sync_interval_minutes', 'last_successful_sync');
+    .select('id', 'property_id', 'base_url', 'api_key_encrypted', 'qloapps_hotel_id', 'sync_interval_minutes', 'last_successful_sync');
 }
 
 /**
@@ -173,6 +173,7 @@ async function getEnabledConfigs(): Promise<Array<{
  */
 async function runSyncForConfig(config: {
   id: string;
+  property_id: string;
   base_url: string;
   api_key_encrypted: string;
   qloapps_hotel_id: number;
@@ -189,7 +190,7 @@ async function runSyncForConfig(config: {
   console.log(`[QloApps Sync] ▶️  Starting sync for config ${config.id}...`);
 
   // Acquire lock
-  const syncId = await acquireSyncLock(config.id);
+  const syncId = await acquireSyncLock(config.id, config.property_id);
   if (!syncId) {
     return {
       success: false,
@@ -213,93 +214,152 @@ async function runSyncForConfig(config: {
     });
 
     // Create sync service
-    const syncService = new QloAppsPullSyncService(client, config.id);
+    const syncService = new QloAppsPullSyncService(client, config.id, config.property_id, config.qloapps_hotel_id);
 
-    // Build sync options
-    const syncOptions: Parameters<typeof syncService.pullBookings>[0] = {};
-    if (config.last_successful_sync) {
-      syncOptions.modifiedSince = config.last_successful_sync;
-    } else {
-      syncOptions.fullSync = true;
-    }
-
-    // Pull bookings
-    const bookings = await syncService.pullBookings(syncOptions);
-
-    if (bookings.length === 0) {
-      console.log(`[QloApps Sync] ℹ️  No new bookings to sync for config ${config.id}`);
+    // Determine sync type and run appropriate sync method
+    let result;
+    if (!config.last_successful_sync) {
+      // First sync - do full 3-phase sync
+      console.log(`[QloApps Sync] 🆕 First sync for config ${config.id}, running full 3-phase sync...`);
+      result = await syncService.pullFullSync({ fullSync: true });
+      
       const durationMs = Date.now() - startTime;
+      
+      console.log(
+        `[QloApps Sync] ✅ Full sync complete for config ${config.id}: ` +
+        `${result.reservations.created} created, ${result.reservations.updated} updated, ${result.reservations.failed} failed in ${durationMs}ms`
+      );
 
-      await releaseSyncLock(syncId, true, {
-        itemsProcessed: 0,
+      // Release lock
+      await releaseSyncLock(syncId, result.success, {
+        itemsProcessed: result.reservations.processed,
+        itemsCreated: result.reservations.created,
+        itemsUpdated: result.reservations.updated,
+        itemsFailed: result.reservations.failed,
         durationMs,
       });
 
-      // Update last successful sync even if no bookings
-      await db('qloapps_config')
-        .where({ id: config.id })
-        .update({
-          last_successful_sync: new Date(),
-          consecutive_failures: 0,
-          last_sync_error: null,
-        });
+      // Update config
+      if (result.success) {
+        await db('qloapps_config')
+          .where({ id: config.id })
+          .update({
+            last_successful_sync: new Date(),
+            last_sync_error: null,
+          });
+      } else {
+        await db('qloapps_config')
+          .where({ id: config.id })
+          .update({
+            last_sync_error: result.error || 'Full sync failed',
+          });
+      }
 
       return {
-        success: true,
-        itemsProcessed: 0,
-        itemsCreated: 0,
-        itemsUpdated: 0,
-        itemsFailed: 0,
+        success: result.success,
+        itemsProcessed: result.reservations.processed,
+        itemsCreated: result.reservations.created,
+        itemsUpdated: result.reservations.updated,
+        itemsFailed: result.reservations.failed,
+        error: result.error,
+      };
+    } else {
+      // Incremental sync - still do 3-phase (room types, customers, bookings) to ensure mappings exist
+      console.log(`[QloApps Sync] 🔄 Incremental sync for config ${config.id}...`);
+      
+      // Phase 1: Sync room types (to catch any new ones)
+      console.log(`[QloApps Sync] 🏨 Phase 1: Syncing room types...`);
+      const roomTypeResults = await syncService.roomTypeSyncService.pullRoomTypes();
+      const roomTypesSynced = roomTypeResults.filter(r => r.success && (r.action === 'created' || r.action === 'mapped')).length;
+      if (roomTypesSynced > 0) {
+        console.log(`[QloApps Sync] ✓ Synced ${roomTypesSynced} new room types`);
+      }
+
+      // Phase 2: Sync customers (to catch any new ones)
+      console.log(`[QloApps Sync] 👥 Phase 2: Syncing customers...`);
+      const customerResults = await syncService.customerSyncService.pullCustomers({ updateExisting: false });
+      const customersSynced = customerResults.filter(r => r.success && (r.action === 'created' || r.action === 'matched')).length;
+      if (customersSynced > 0) {
+        console.log(`[QloApps Sync] ✓ Synced ${customersSynced} new customers`);
+      }
+
+      // Phase 3: Sync bookings
+      console.log(`[QloApps Sync] 📅 Phase 3: Syncing bookings...`);
+      const syncOptions: Parameters<typeof syncService.pullBookings>[0] = {
+        modifiedSince: config.last_successful_sync,
+      };
+
+      const bookings = await syncService.pullBookings(syncOptions);
+
+      if (bookings.length === 0) {
+        console.log(`[QloApps Sync] ℹ️  No new bookings to sync for config ${config.id}`);
+        const durationMs = Date.now() - startTime;
+
+        await releaseSyncLock(syncId, true, {
+          itemsProcessed: 0,
+          durationMs,
+        });
+
+        // Update last successful sync even if no bookings
+        await db('qloapps_config')
+          .where({ id: config.id })
+          .update({
+            last_successful_sync: new Date(),
+            last_sync_error: null,
+          });
+
+        return {
+          success: true,
+          itemsProcessed: 0,
+          itemsCreated: 0,
+          itemsUpdated: 0,
+          itemsFailed: 0,
+        };
+      }
+
+      // Sync bookings to PMS
+      const results = await syncService.syncBookingsToPms(bookings);
+
+      const created = results.filter(r => r.action === 'created').length;
+      const updated = results.filter(r => r.action === 'updated').length;
+      const skipped = results.filter(r => r.action === 'skipped').length;
+      const failed = results.filter(r => r.action === 'failed').length;
+      const durationMs = Date.now() - startTime;
+
+      console.log(
+        `[QloApps Sync] ✅ Incremental sync complete for config ${config.id}: ` +
+        `${created} created, ${updated} updated, ${skipped} skipped, ${failed} failed in ${durationMs}ms`
+      );
+
+      // Release lock
+      await releaseSyncLock(syncId, failed === 0 || (created + updated) > 0, {
+        itemsProcessed: bookings.length,
+        itemsCreated: created,
+        itemsUpdated: updated,
+        itemsFailed: failed,
+        durationMs,
+      });
+
+      // Update config
+      if (failed === 0 || (created + updated) > 0) {
+        await db('qloapps_config')
+          .where({ id: config.id })
+          .update({
+            last_successful_sync: new Date(),
+            last_sync_error: null,
+          });
+      }
+
+      return {
+        success: failed < bookings.length,
+        itemsProcessed: bookings.length,
+        itemsCreated: created,
+        itemsUpdated: updated,
+        itemsFailed: failed,
+        error: failed > 0 ? `${failed} bookings failed to sync` : undefined,
       };
     }
 
-    // Sync bookings to PMS
-    const results = await syncService.syncBookingsToPms(bookings);
-
-    const created = results.filter(r => r.action === 'created').length;
-    const updated = results.filter(r => r.action === 'updated').length;
-    const skipped = results.filter(r => r.action === 'skipped').length;
-    const failed = results.filter(r => r.action === 'failed').length;
-    const durationMs = Date.now() - startTime;
-
-    console.log(
-      `[QloApps Sync] ✅ Sync complete for config ${config.id}: ` +
-      `${created} created, ${updated} updated, ${skipped} skipped, ${failed} failed in ${durationMs}ms`
-    );
-
-    // Release lock
-    await releaseSyncLock(syncId, failed === 0 || (created + updated) > 0, {
-      itemsProcessed: bookings.length,
-      itemsCreated: created,
-      itemsUpdated: updated,
-      itemsFailed: failed,
-      durationMs,
-    });
-
-    // Update config
-    if (failed === 0 || (created + updated) > 0) {
-      await db('qloapps_config')
-        .where({ id: config.id })
-        .update({
-          last_successful_sync: new Date(),
-          consecutive_failures: 0,
-          last_sync_error: null,
-        });
-    }
-
-    const result: SyncResult = {
-      success: failed < bookings.length,
-      itemsProcessed: bookings.length,
-      itemsCreated: created,
-      itemsUpdated: updated,
-      itemsFailed: failed,
-    };
-
-    if (failed > 0) {
-      result.error = `${failed} bookings failed to sync`;
-    }
-
-    return result;
   } catch (error) {
     const durationMs = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -315,7 +375,6 @@ async function runSyncForConfig(config: {
     await db('qloapps_config')
       .where({ id: config.id })
       .update({
-        consecutive_failures: db.raw('consecutive_failures + 1'),
         last_sync_error: errorMessage,
       });
 

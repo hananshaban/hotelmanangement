@@ -15,6 +15,7 @@ import {
   syncStateRepository,
   syncLogRepository,
 } from './qloapps_repository.js';
+import { queueQloAppsInboundSync } from '../../integrations/qloapps/queue/rabbitmq_publisher.js';
 import type {
   SaveQloAppsConfigRequest,
   UpdateQloAppsConfigRequest,
@@ -60,8 +61,6 @@ export async function getConfigHandler(
       syncRates: config.sync_rates,
       lastSuccessfulSync: config.last_successful_sync,
       lastSyncError: config.last_sync_error,
-      consecutiveFailures: config.consecutive_failures,
-      circuitState: config.circuit_state,
       createdAt: config.created_at,
       updatedAt: config.updated_at,
     });
@@ -309,6 +308,24 @@ export async function triggerSyncHandler(
       });
       return;
     }
+    
+    // Map user-friendly sync types to database sync types
+    const syncTypeMap: Record<string, string> = {
+      'full': 'qloapps_full_sync',
+      'reservations_inbound': 'qloapps_reservations_pull',
+      'reservations_outbound': 'qloapps_reservations_push',
+      'room_types': 'qloapps_room_types_pull',
+      'availability': 'qloapps_availability_push',
+      'rates': 'qloapps_rates_push',
+    };
+    
+    const dbSyncType = syncTypeMap[syncType];
+    if (!dbSyncType) {
+      res.status(400).json({
+        error: `Invalid syncType mapping: ${syncType}`,
+      });
+      return;
+    }
 
     // Check if config exists
     const config = await qloAppsConfigRepository.getConfig();
@@ -327,16 +344,7 @@ export async function triggerSyncHandler(
       return;
     }
 
-    // Check circuit breaker
-    if (config.circuit_state === 'open') {
-      res.status(503).json({
-        error: 'Sync circuit is open due to repeated failures. Please test connection first.',
-      });
-      return;
-    }
-
     // Check if sync is already running
-    const dbSyncType = `qloapps_${syncType}`;
     const isRunning = await syncStateRepository.isRunning(dbSyncType);
     if (isRunning) {
       res.status(409).json({
@@ -351,9 +359,28 @@ export async function triggerSyncHandler(
       options,
     });
 
-    // TODO: Queue the actual sync job via RabbitMQ or run in background
-    // For now, we'll just acknowledge the request
-    // In Phase 5, this will queue a job to the sync worker
+    // Queue the sync job via RabbitMQ for async processing
+    try {
+      if (syncType === 'full' || syncType === 'reservations_inbound') {
+        console.log(`[QloApps Controller] Queuing ${syncType} sync for config ${config.id}...`);
+        console.log(`[QloApps Controller] Sync state ID: ${syncState.id}`);
+        
+        const messageId = await queueQloAppsInboundSync(config.id, {
+          syncType: syncType === 'full' ? 'full' : 'incremental',
+          syncStateId: syncState.id,
+        });
+        
+        console.log(`[QloApps Controller] ✓ Queued ${syncType} sync`);
+        console.log(`[QloApps Controller]   Message ID: ${messageId}`);
+        console.log(`[QloApps Controller]   Sync State ID: ${syncState.id}`);
+      }
+      // Other sync types (room_types, availability, rates, reservations_outbound) can be added here
+    } catch (queueError) {
+      console.error(`[QloApps Controller] ❌ Failed to queue sync:`, queueError);
+      // Mark sync as failed
+      await syncStateRepository.failSync(syncState.id, 'Failed to queue sync job');
+      throw new Error('Failed to queue sync job');
+    }
 
     res.json({
       success: true,
@@ -384,30 +411,136 @@ export async function getSyncStatusHandler(
 
     // Get latest sync states for each type
     const syncTypes = [
-      'qloapps_full',
-      'qloapps_reservations_inbound',
-      'qloapps_reservations_outbound',
-      'qloapps_room_types',
-      'qloapps_availability',
-      'qloapps_rates',
+      'qloapps_full_sync',
+      'qloapps_reservations_pull',
+      'qloapps_reservations_push',
+      'qloapps_room_types_pull',
+      'qloapps_availability_push',
+      'qloapps_rates_push',
     ];
 
     const lastSyncs: Record<string, unknown> = {};
+    
+    // Map database sync types to user-friendly names
+    const syncTypeDisplayMap: Record<string, string> = {
+      'qloapps_full_sync': 'full',
+      'qloapps_reservations_pull': 'reservations_inbound',
+      'qloapps_reservations_push': 'reservations_outbound',
+      'qloapps_room_types_pull': 'room_types',
+      'qloapps_availability_push': 'availability',
+      'qloapps_rates_push': 'rates',
+    };
+    
     for (const syncType of syncTypes) {
       const lastSync = await syncStateRepository.getLatestState(syncType);
       if (lastSync) {
-        const shortType = syncType.replace('qloapps_', '');
-        lastSyncs[shortType] = {
-          status: lastSync.status,
-          startedAt: lastSync.started_at,
-          completedAt: lastSync.completed_at,
-          itemsProcessed: lastSync.items_processed,
-          itemsCreated: lastSync.items_created,
-          itemsUpdated: lastSync.items_updated,
-          itemsFailed: lastSync.items_failed,
-          durationMs: lastSync.duration_ms,
-          error: lastSync.error_message,
-        };
+        const shortType = syncTypeDisplayMap[syncType] || syncType.replace('qloapps_', '');
+        
+        // Map entity-specific columns to generic items for frontend
+        let itemsProcessed = 0;
+        let itemsCreated = 0;
+        let itemsUpdated = 0;
+        let itemsFailed = 0;
+        
+        // For full sync, include breakdown of all 3 phases
+        if (syncType === 'qloapps_full_sync') {
+          itemsProcessed = lastSync.reservations_processed + lastSync.room_types_processed + lastSync.customers_processed;
+          itemsCreated = lastSync.reservations_created + lastSync.room_types_synced + lastSync.customers_synced;
+          itemsUpdated = lastSync.reservations_updated;
+          itemsFailed = lastSync.reservations_failed;
+          
+          lastSyncs[shortType] = {
+            status: lastSync.status,
+            startedAt: lastSync.started_at,
+            completedAt: lastSync.completed_at,
+            itemsProcessed,
+            itemsCreated,
+            itemsUpdated,
+            itemsFailed,
+            durationMs: lastSync.duration_ms,
+            error: lastSync.error_message,
+            // Include 3-phase breakdown
+            phases: {
+              roomTypes: {
+                processed: lastSync.room_types_processed,
+                synced: lastSync.room_types_synced,
+              },
+              customers: {
+                processed: lastSync.customers_processed,
+                synced: lastSync.customers_synced,
+              },
+              reservations: {
+                processed: lastSync.reservations_processed,
+                created: lastSync.reservations_created,
+                updated: lastSync.reservations_updated,
+                failed: lastSync.reservations_failed,
+              },
+            },
+          };
+        } else if (syncType.includes('reservation')) {
+          itemsProcessed = lastSync.reservations_processed;
+          itemsCreated = lastSync.reservations_created;
+          itemsUpdated = lastSync.reservations_updated;
+          itemsFailed = lastSync.reservations_failed;
+          
+          lastSyncs[shortType] = {
+            status: lastSync.status,
+            startedAt: lastSync.started_at,
+            completedAt: lastSync.completed_at,
+            itemsProcessed,
+            itemsCreated,
+            itemsUpdated,
+            itemsFailed,
+            durationMs: lastSync.duration_ms,
+            error: lastSync.error_message,
+          };
+        } else if (syncType.includes('room_type')) {
+          itemsProcessed = lastSync.room_types_processed;
+          itemsCreated = lastSync.room_types_synced;
+          itemsUpdated = 0;
+          itemsFailed = 0;
+          
+          lastSyncs[shortType] = {
+            status: lastSync.status,
+            startedAt: lastSync.started_at,
+            completedAt: lastSync.completed_at,
+            itemsProcessed,
+            itemsCreated,
+            itemsUpdated,
+            itemsFailed,
+            durationMs: lastSync.duration_ms,
+            error: lastSync.error_message,
+          };
+        } else if (syncType.includes('customer')) {
+          itemsProcessed = lastSync.customers_processed;
+          itemsCreated = lastSync.customers_synced;
+          itemsUpdated = 0;
+          itemsFailed = 0;
+          
+          lastSyncs[shortType] = {
+            status: lastSync.status,
+            startedAt: lastSync.started_at,
+            completedAt: lastSync.completed_at,
+            itemsProcessed,
+            itemsCreated,
+            itemsUpdated,
+            itemsFailed,
+            durationMs: lastSync.duration_ms,
+            error: lastSync.error_message,
+          };
+        } else {
+          lastSyncs[shortType] = {
+            status: lastSync.status,
+            startedAt: lastSync.started_at,
+            completedAt: lastSync.completed_at,
+            itemsProcessed: 0,
+            itemsCreated: 0,
+            itemsUpdated: 0,
+            itemsFailed: 0,
+            durationMs: lastSync.duration_ms,
+            error: lastSync.error_message,
+          };
+        }
       }
     }
 
@@ -943,8 +1076,6 @@ export async function getHealthHandler(
         status: 'unhealthy',
         configured: false,
         connected: false,
-        consecutiveFailures: 0,
-        circuitState: 'closed',
         syncEnabled: false,
       });
       return;
@@ -954,31 +1085,27 @@ export async function getHealthHandler(
     let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
     let connected = false;
 
-    if (config.circuit_state === 'open') {
-      status = 'unhealthy';
-    } else if (config.consecutive_failures > 0) {
-      status = 'degraded';
-    }
-
     // Quick connection check
-    if (config.circuit_state !== 'open') {
-      try {
-        const apiKey = await qloAppsConfigRepository.getDecryptedApiKey();
-        if (apiKey) {
-          const client = new QloAppsClient({
-            baseUrl: config.base_url,
-            apiKey,
-            hotelId: config.qloapps_hotel_id,
-            timeout: 5000, // Quick timeout for health check
-          });
+    try {
+      const apiKey = await qloAppsConfigRepository.getDecryptedApiKey();
+      if (apiKey) {
+        const client = new QloAppsClient({
+          baseUrl: config.base_url,
+          apiKey,
+          hotelId: config.qloapps_hotel_id,
+          timeout: 5000, // Quick timeout for health check
+        });
 
-          const result = await client.testConnection();
-          connected = result.success;
+        const result = await client.testConnection();
+        connected = result.success;
+        
+        if (!connected) {
+          status = 'degraded';
         }
-      } catch {
-        connected = false;
-        status = 'degraded';
       }
+    } catch {
+      connected = false;
+      status = 'degraded';
     }
 
     // Get recent errors count
@@ -990,8 +1117,6 @@ export async function getHealthHandler(
       configured: true,
       connected,
       lastSuccessfulSync: config.last_successful_sync,
-      consecutiveFailures: config.consecutive_failures,
-      circuitState: config.circuit_state,
       syncEnabled: config.sync_enabled,
       details: {
         pendingInbound: 0, // TODO: Calculate from queue

@@ -71,14 +71,29 @@ export function mapPmsRoomTypeToQloAppsUpdate(
 export function mapQloAppsRoomTypeToPms(
   qloAppsRoomType: QloAppsRoomType
 ): CreateRoomTypeRequest {
+  // Safely calculate max_people
+  const maxAdults = qloAppsRoomType.max_adults || 2;
+  const maxChildren = qloAppsRoomType.max_children || 0;
+  const maxPeople = qloAppsRoomType.max_guests || (maxAdults + maxChildren);
+  
+  // Ensure price is a number (QloApps may return string)
+  const pricePerNight = typeof qloAppsRoomType.price === 'string' 
+    ? parseFloat(qloAppsRoomType.price) 
+    : (qloAppsRoomType.price || 0);
+  
+  // Ensure quantity is a number
+  const qty = typeof qloAppsRoomType.quantity === 'string'
+    ? parseInt(qloAppsRoomType.quantity, 10)
+    : (qloAppsRoomType.quantity || 1);
+
   const result: CreateRoomTypeRequest = {
     name: qloAppsRoomType.name,
     room_type: 'double', // Default to double room type (most common)
-    qty: qloAppsRoomType.quantity || 1,
-    price_per_night: qloAppsRoomType.price || 0,
-    max_adult: qloAppsRoomType.max_adults || 2,
-    max_children: qloAppsRoomType.max_children || 0,
-    max_people: qloAppsRoomType.max_guests || qloAppsRoomType.max_adults + qloAppsRoomType.max_children,
+    qty: isNaN(qty) ? 1 : qty,
+    price_per_night: isNaN(pricePerNight) ? 0 : pricePerNight,
+    max_adult: maxAdults,
+    max_children: maxChildren,
+    max_people: maxPeople,
     features: mapQloAppsFeaturesToPms(qloAppsRoomType.features),
   };
 

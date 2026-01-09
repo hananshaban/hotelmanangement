@@ -50,8 +50,6 @@ export interface QloAppsConfigResponse {
   syncRates?: boolean;
   lastSuccessfulSync?: Date | null;
   lastSyncError?: string | null;
-  consecutiveFailures?: number;
-  circuitState?: 'closed' | 'open' | 'half_open';
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -261,13 +259,13 @@ export interface QloAppsHealthResponse {
   configured: boolean;
   connected: boolean;
   lastSuccessfulSync?: Date;
-  consecutiveFailures: number;
-  circuitState: 'closed' | 'open' | 'half_open';
   syncEnabled: boolean;
   details?: {
     apiResponseTime?: number;
     pendingInbound?: number;
     pendingOutbound?: number;
+    runningJobs?: number;
+    recentErrorsCount?: number;
     lastError?: string;
   };
 }

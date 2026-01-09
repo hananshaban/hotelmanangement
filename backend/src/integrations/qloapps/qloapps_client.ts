@@ -17,6 +17,7 @@ import type {
   QloAppsRoomType,
   QloAppsCustomer,
   QloAppsBooking,
+  QloAppsBookingRaw,
   QloAppsBookingCreateRequest,
   QloAppsBookingUpdateRequest,
   QloAppsCustomerCreateRequest,
@@ -38,6 +39,7 @@ import {
   QloAppsConfigurationError,
   createQloAppsError,
 } from './qloapps_errors.js';
+import { normalizeQloAppsBooking } from './utils/booking_normalizer.js';
 
 // ============================================================================
 // Circuit Breaker State
@@ -259,32 +261,59 @@ export class QloAppsClient {
     const startTime = Date.now();
 
     try {
-      // Try to fetch the API root to get available resources
-      const response = await this.makeRequest<Record<string, unknown>>(
-        QLOAPPS_CONFIG.ENDPOINTS.ROOT,
-        { method: 'GET' }
+      // Test connection by fetching the hotel info (validates API key, hotel ID, and connectivity)
+      // This is a real, meaningful test that proves the configuration is correct
+      // Always use display=full to get complete entity data
+      const hotels = await this.makeRequest<any>(
+        `${QLOAPPS_CONFIG.ENDPOINTS.HOTELS}/${this.config.hotelId}`,
+        { method: 'GET', query: { display: 'full' } }
       );
 
       const responseTimeMs = Date.now() - startTime;
 
-      // Extract available resources from response
-      const availableResources = Object.keys(response).filter(
-        (key) => typeof response[key] === 'object'
-      );
+      // Extract hotel name if available
+      let hotelName: string | undefined;
+      if (hotels?.hotel?.hotel_name) {
+        hotelName = hotels.hotel.hotel_name;
+      } else if (hotels?.hotels?.hotel?.[0]?.hotel_name) {
+        hotelName = hotels.hotels.hotel[0].hotel_name;
+      }
 
-      return {
+      const result: QloAppsConnectionTestResult = {
         success: true,
-        message: 'Successfully connected to QloApps',
-        availableResources,
+        message: hotelName 
+          ? `Successfully connected to QloApps (Hotel: ${hotelName})`
+          : 'Successfully connected to QloApps',
         responseTimeMs,
       };
+      
+      if (hotelName) {
+        result.hotelName = hotelName;
+      }
+      
+      return result;
     } catch (error) {
       const responseTimeMs = Date.now() - startTime;
 
+      // Provide helpful error messages
       if (error instanceof QloAppsError) {
+        let message = 'Connection failed';
+        
+        if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+          message = 'Invalid API key or credentials';
+        } else if (error.message.includes('404') || error.message.includes('not found')) {
+          message = 'Invalid hotel ID or endpoint not found';
+        } else if (error.message.includes('ECONNREFUSED')) {
+          message = 'Cannot reach QloApps server - check base URL';
+        } else if (error.message.includes('timeout')) {
+          message = 'Connection timeout - server not responding';
+        } else {
+          message = `Connection failed: ${error.message}`;
+        }
+
         return {
           success: false,
-          message: `Connection failed: ${error.message}`,
+          message,
           error: error.message,
           responseTimeMs,
         };
@@ -360,55 +389,147 @@ export class QloAppsClient {
   // ==========================================================================
 
   /**
-   * Get bookings from QloApps
+   * Get bookings from QloApps using the room_bookings endpoint
    * @param params Filter parameters
    * @returns Array of bookings
+   * 
+   * Note: room_bookings endpoint has different filter fields than bookings endpoint:
+   * - Use id_status instead of booking_status
+   * - Use date_from/date_to for date range (no date_upd for modified since)
+   * - Available filters: id, id_product, id_hotel, id_order, id_status, check_in, check_out, date_from, date_to, etc.
+   * 
+   * QloApps/PrestaShop filter syntax:
+   * - EQUAL: filter[field]=value
+   * - GREATER THAN: filter[field]=>[value]
+   * - LOWER THAN: filter[field]=<[value]
    */
   async getBookings(params?: GetBookingsParams): Promise<QloAppsBooking[]> {
     const query: Record<string, string | number | undefined> = {
-      display: params?.display === 'full' ? 'full' : 'full',
+      display: 'full', // Always use full display to get complete entity data
     };
 
     if (params?.hotelId) {
       query['filter[id_hotel]'] = params.hotelId;
     }
+    
+    // room_bookings uses id_status instead of booking_status
     if (params?.bookingStatus !== undefined) {
-      query['filter[booking_status]'] = params.bookingStatus;
+      query['filter[id_status]'] = params.bookingStatus;
     }
+    
+    // Use GREATER THAN (>) and LOWER THAN (<) operators with bracket syntax
+    // Note: Values inside brackets are automatically URL-encoded by URLSearchParams
     if (params?.dateFrom) {
-      query['filter[date_from]'] = `>=${params.dateFrom}`;
+      query['filter[date_from]'] = `>[${params.dateFrom}]`;
     }
     if (params?.dateTo) {
-      query['filter[date_to]'] = `<=${params.dateTo}`;
+      query['filter[date_to]'] = `<[${params.dateTo}]`;
     }
+    
+    // Note: room_bookings doesn't have date_upd field for modified since
+    // For incremental sync, we need to use check_in date as a proxy
     if (params?.modifiedSince) {
-      query['filter[date_upd]'] = `>=${params.modifiedSince}`;
+      // Use check_in date as filter since there's no date_upd
+      // modifiedSince is ISO 8601 string, extract date part (YYYY-MM-DD)
+      const dateFilter = params.modifiedSince.split('T')[0];
+      query['filter[check_in]'] = `>[${dateFilter}]`;
     }
+    
     if (params?.limit) {
       query.limit = `${params.offset || 0},${params.limit}`;
     }
 
-    const response = await this.makeRequest<{ bookings?: QloAppsBooking[] }>(
-      QLOAPPS_CONFIG.ENDPOINTS.BOOKINGS,
-      { method: 'GET', query }
-    );
+    // Log the query being sent for debugging
+    this.log(`[QloAppsClient] getBookings query: ${JSON.stringify(query)}`);
+    console.log(`[QloAppsClient] Fetching bookings with filters:`, query);
 
-    return response.bookings || [];
+    // Use room_bookings endpoint instead of bookings for complete data
+    let response;
+    try {
+      response = await this.makeRequest<{
+        bookings?: QloAppsBookingRaw[]; // room_bookings endpoint returns "bookings" key
+      }>(
+        QLOAPPS_CONFIG.ENDPOINTS.ROOM_BOOKINGS,
+        { method: 'GET', query }
+      );
+    } catch (error) {
+      // If query with filters fails, try with minimal filters
+      if (error instanceof QloAppsError && error.statusCode === 500) {
+        console.warn(`[QloAppsClient] Initial query failed with 500, retrying with minimal filters...`);
+        const minimalQuery: Record<string, string | number | undefined> = {
+          display: 'full',
+        };
+        if (params?.hotelId) {
+          minimalQuery['filter[id_hotel]'] = params.hotelId;
+        }
+        if (params?.limit) {
+          minimalQuery.limit = `${params.offset || 0},${params.limit}`;
+        }
+
+        console.log(`[QloAppsClient] Retrying with minimal query:`, minimalQuery);
+        response = await this.makeRequest<{
+          bookings?: QloAppsBookingRaw[];
+        }>(
+          QLOAPPS_CONFIG.ENDPOINTS.ROOM_BOOKINGS,
+          { method: 'GET', query: minimalQuery }
+        );
+      } else {
+        throw error;
+      }
+    }
+
+    // room_bookings endpoint returns "bookings" key
+    const rawBookings = response.bookings || [];
+    
+    // Log first raw booking structure for debugging
+    if (rawBookings.length > 0 && this.debug) {
+      const firstBooking = rawBookings[0] as any; // Type assertion for debug logging
+      console.log('[QloAppsClient] Raw booking structure from API:', {
+        id: firstBooking?.id,
+        keys: Object.keys(firstBooking || {}),
+        has_associations: !!firstBooking?.associations,
+        associations_keys: firstBooking?.associations ? Object.keys(firstBooking.associations) : [],
+        endpoint: QLOAPPS_CONFIG.ENDPOINTS.ROOM_BOOKINGS,
+      });
+    }
+    
+    // Normalize bookings from PrestaShop associations structure
+    const bookings = rawBookings.map(raw => normalizeQloAppsBooking(raw));
+    
+    // Log normalized structure
+    if (bookings.length > 0 && this.debug) {
+      console.log('[QloAppsClient] Normalized booking structure:', {
+        id: bookings[0]?.id,
+        has_room_types: !!bookings[0]?.room_types,
+        room_types_count: bookings[0]?.room_types?.length || 0,
+        has_customer_detail: !!bookings[0]?.customer_detail,
+      });
+    }
+    
+    return bookings;
   }
 
   /**
-   * Get a specific booking by ID
+   * Get a specific booking by ID using the room_bookings endpoint
    * @param id Booking ID
    * @returns Booking or null if not found
    */
   async getBooking(id: number): Promise<QloAppsBooking | null> {
     try {
-      const response = await this.makeRequest<{ booking?: QloAppsBooking }>(
-        `${QLOAPPS_CONFIG.ENDPOINTS.BOOKINGS}/${id}`,
+      const response = await this.makeRequest<{
+        booking?: QloAppsBookingRaw; // room_bookings endpoint returns "booking" key for single items
+      }>(
+        `${QLOAPPS_CONFIG.ENDPOINTS.ROOM_BOOKINGS}/${id}`,
         { method: 'GET', query: { display: 'full' } }
       );
 
-      return response.booking || null;
+      const rawBooking = response.booking;
+      if (!rawBooking) {
+        return null;
+      }
+
+      // Normalize booking from room_bookings flat structure
+      return normalizeQloAppsBooking(rawBooking);
     } catch (error) {
       if (error instanceof QloAppsError && error.statusCode === 404) {
         return null;
@@ -755,6 +876,13 @@ export class QloAppsClient {
       // Handle non-2xx responses
       if (!response.ok) {
         const errorData = await this.parseErrorResponse(response);
+        
+        // Enhanced error logging for debugging
+        console.error(`[QloAppsClient] API Error Response:`);
+        console.error(`[QloAppsClient]   URL: ${fullUrl}`);
+        console.error(`[QloAppsClient]   Status: ${response.status} ${response.statusText}`);
+        console.error(`[QloAppsClient]   Error Data:`, JSON.stringify(errorData, null, 2));
+        
         const error = createQloAppsError(response.status, errorData);
         throw error;
       }

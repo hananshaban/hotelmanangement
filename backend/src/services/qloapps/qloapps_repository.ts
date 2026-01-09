@@ -29,9 +29,6 @@ export interface QloAppsConfigRecord {
   sync_rates: boolean;
   last_successful_sync: Date | null;
   last_sync_error: string | null;
-  consecutive_failures: number;
-  circuit_state: 'closed' | 'open' | 'half_open';
-  circuit_opened_at: Date | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -76,21 +73,36 @@ export interface CustomerMappingRecord {
 
 export interface SyncStateRecord {
   id: string;
+  property_id: string;
   sync_type: string;
-  status: 'running' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   started_at: Date;
   completed_at: Date | null;
   last_successful_sync: Date | null;
-  sync_cursor: Record<string, unknown> | null;
-  items_processed: number;
-  items_created: number;
-  items_updated: number;
-  items_failed: number;
+  cursor: string | null;
+  reservations_processed: number;
+  reservations_created: number;
+  reservations_updated: number;
+  reservations_failed: number;
+  room_types_processed: number;
+  room_types_synced: number;
+  customers_processed: number;
+  customers_synced: number;
+  availability_updates: number;
+  rate_updates: number;
   duration_ms: number | null;
+  api_calls_made: number;
   error_message: string | null;
+  error_code: string | null;
   next_retry_at: Date | null;
   retry_count: number;
+  max_retries: number;
+  trigger_source: 'scheduled' | 'manual' | 'webhook' | 'event';
+  triggered_by_user_id: string | null;
+  lock_id: string | null;
+  lock_expires_at: Date | null;
   metadata: Record<string, unknown> | null;
+  summary: Record<string, unknown> | null;
   created_at: Date;
 }
 
@@ -162,26 +174,26 @@ export class QloAppsConfigRepository {
   }): Promise<QloAppsConfigRecord> {
     const encryptedApiKey = encrypt(data.apiKey);
     const now = new Date();
-
     const existing = await this.getConfig();
+
+    const dbPayload = {
+      base_url: data.baseUrl,
+      api_key_encrypted: encryptedApiKey,
+      qloapps_hotel_id: data.qloAppsHotelId,
+      sync_interval_minutes: data.syncIntervalMinutes ?? 5,
+      sync_enabled: data.syncEnabled ?? true,
+      sync_reservations_inbound: data.syncReservationsInbound ?? true,
+      sync_reservations_outbound: data.syncReservationsOutbound ?? true,
+      sync_availability: data.syncAvailability ?? true,
+      sync_rates: data.syncRates ?? true,
+    };
 
     if (existing) {
       // Update existing config
       await db('qloapps_config')
         .where({ property_id: PROPERTY_ID })
         .update({
-          base_url: data.baseUrl,
-          api_key_encrypted: encryptedApiKey,
-          qloapps_hotel_id: data.qloAppsHotelId,
-          sync_interval_minutes: data.syncIntervalMinutes ?? 15,
-          sync_enabled: data.syncEnabled ?? true,
-          sync_reservations_inbound: data.syncReservationsInbound ?? true,
-          sync_reservations_outbound: data.syncReservationsOutbound ?? true,
-          sync_availability: data.syncAvailability ?? true,
-          sync_rates: data.syncRates ?? true,
-          consecutive_failures: 0,
-          circuit_state: 'closed',
-          circuit_opened_at: null,
+          ...dbPayload,
           last_sync_error: null,
           updated_at: now,
         });
@@ -189,17 +201,7 @@ export class QloAppsConfigRepository {
       // Insert new config
       await db('qloapps_config').insert({
         property_id: PROPERTY_ID,
-        base_url: data.baseUrl,
-        api_key_encrypted: encryptedApiKey,
-        qloapps_hotel_id: data.qloAppsHotelId,
-        sync_interval_minutes: data.syncIntervalMinutes ?? 15,
-        sync_enabled: data.syncEnabled ?? true,
-        sync_reservations_inbound: data.syncReservationsInbound ?? true,
-        sync_reservations_outbound: data.syncReservationsOutbound ?? true,
-        sync_availability: data.syncAvailability ?? true,
-        sync_rates: data.syncRates ?? true,
-        consecutive_failures: 0,
-        circuit_state: 'closed',
+        ...dbPayload,
         created_at: now,
         updated_at: now,
       });
@@ -263,9 +265,6 @@ export class QloAppsConfigRepository {
       .update({
         last_successful_sync: new Date(),
         last_sync_error: null,
-        consecutive_failures: 0,
-        circuit_state: 'closed',
-        circuit_opened_at: null,
         updated_at: new Date(),
       });
   }
@@ -274,38 +273,10 @@ export class QloAppsConfigRepository {
    * Record a sync failure
    */
   async recordSyncFailure(errorMessage: string): Promise<void> {
-    const config = await this.getConfig();
-    if (!config) return;
-
-    const failures = config.consecutive_failures + 1;
-    let circuitState = config.circuit_state;
-    let circuitOpenedAt = config.circuit_opened_at;
-
-    // Open circuit after 5 consecutive failures
-    if (failures >= 5 && circuitState === 'closed') {
-      circuitState = 'open';
-      circuitOpenedAt = new Date();
-    }
-
     await db('qloapps_config')
       .where({ property_id: PROPERTY_ID })
       .update({
         last_sync_error: errorMessage,
-        consecutive_failures: failures,
-        circuit_state: circuitState,
-        circuit_opened_at: circuitOpenedAt,
-        updated_at: new Date(),
-      });
-  }
-
-  /**
-   * Reset circuit breaker (for half-open testing)
-   */
-  async setCircuitHalfOpen(): Promise<void> {
-    await db('qloapps_config')
-      .where({ property_id: PROPERTY_ID })
-      .update({
-        circuit_state: 'half_open',
         updated_at: new Date(),
       });
   }
@@ -757,19 +728,32 @@ export class SyncStateRepository {
     const now = new Date();
 
     const insertData: Record<string, unknown> = {
+      property_id: PROPERTY_ID,
       sync_type: syncType,
       status: 'running',
       started_at: now,
-      items_processed: 0,
-      items_created: 0,
-      items_updated: 0,
-      items_failed: 0,
+      reservations_processed: 0,
+      reservations_created: 0,
+      reservations_updated: 0,
+      reservations_failed: 0,
+      room_types_processed: 0,
+      room_types_synced: 0,
+      customers_processed: 0,
+      customers_synced: 0,
+      availability_updates: 0,
+      rate_updates: 0,
+      api_calls_made: 0,
       retry_count: 0,
+      trigger_source: 'manual',
       created_at: now,
     };
 
     if (metadata !== undefined) {
       insertData.metadata = JSON.stringify(metadata);
+      // Set trigger source from metadata if provided
+      if ((metadata as any).triggeredBy) {
+        insertData.trigger_source = (metadata as any).triggeredBy;
+      }
     }
 
     const [result] = await db('qloapps_sync_state')
@@ -793,28 +777,105 @@ export class SyncStateRepository {
     }
   ): Promise<void> {
     const now = new Date();
-    const startedAt = await db('qloapps_sync_state')
+    const record = await db('qloapps_sync_state')
       .where({ id: syncStateId })
-      .select('started_at')
+      .select('started_at', 'sync_type')
       .first();
 
-    const durationMs = startedAt
-      ? now.getTime() - new Date(startedAt.started_at).getTime()
-      : null;
+    if (!record) {
+      throw new Error(`Sync state not found: ${syncStateId}`);
+    }
+
+    const durationMs = now.getTime() - new Date(record.started_at).getTime();
 
     const updateData: Record<string, unknown> = {
       status: 'completed',
       completed_at: now,
       last_successful_sync: now,
-      items_processed: result.itemsProcessed,
-      items_created: result.itemsCreated,
-      items_updated: result.itemsUpdated,
-      items_failed: result.itemsFailed,
       duration_ms: durationMs,
     };
 
+    // Map generic result fields to appropriate entity-specific columns based on sync type
+    if (record.sync_type.includes('reservation')) {
+      updateData.reservations_processed = result.itemsProcessed;
+      updateData.reservations_created = result.itemsCreated;
+      updateData.reservations_updated = result.itemsUpdated;
+      updateData.reservations_failed = result.itemsFailed;
+    } else if (record.sync_type.includes('room_type')) {
+      updateData.room_types_processed = result.itemsProcessed;
+      updateData.room_types_synced = result.itemsCreated + result.itemsUpdated;
+    } else if (record.sync_type.includes('customer')) {
+      updateData.customers_processed = result.itemsProcessed;
+      updateData.customers_synced = result.itemsCreated + result.itemsUpdated;
+    }
+
     if (result.syncCursor !== undefined) {
-      updateData.sync_cursor = JSON.stringify(result.syncCursor);
+      updateData.cursor = result.syncCursor ? JSON.stringify(result.syncCursor) : null;
+    }
+
+    await db('qloapps_sync_state')
+      .where({ id: syncStateId })
+      .update(updateData);
+  }
+
+  /**
+   * Complete a full 3-phase sync operation with all statistics
+   */
+  async completeFullSync(
+    syncStateId: string,
+    result: {
+      roomTypes: {
+        processed: number;
+        synced: number;
+        failed: number;
+      };
+      customers: {
+        processed: number;
+        synced: number;
+        failed: number;
+      };
+      reservations: {
+        processed: number;
+        created: number;
+        updated: number;
+        failed: number;
+      };
+      syncCursor?: Record<string, unknown>;
+    }
+  ): Promise<void> {
+    const now = new Date();
+    const record = await db('qloapps_sync_state')
+      .where({ id: syncStateId })
+      .select('started_at')
+      .first();
+
+    if (!record) {
+      throw new Error(`Sync state not found: ${syncStateId}`);
+    }
+
+    const durationMs = now.getTime() - new Date(record.started_at).getTime();
+    const totalFailed = result.roomTypes.failed + result.customers.failed + result.reservations.failed;
+
+    const updateData: Record<string, unknown> = {
+      status: totalFailed === 0 ? 'completed' : 'failed',
+      completed_at: now,
+      last_successful_sync: totalFailed === 0 ? now : null,
+      duration_ms: durationMs,
+      // Room types
+      room_types_processed: result.roomTypes.processed,
+      room_types_synced: result.roomTypes.synced,
+      // Customers
+      customers_processed: result.customers.processed,
+      customers_synced: result.customers.synced,
+      // Reservations
+      reservations_processed: result.reservations.processed,
+      reservations_created: result.reservations.created,
+      reservations_updated: result.reservations.updated,
+      reservations_failed: result.reservations.failed,
+    };
+
+    if (result.syncCursor !== undefined) {
+      updateData.cursor = result.syncCursor ? JSON.stringify(result.syncCursor) : null;
     }
 
     await db('qloapps_sync_state')

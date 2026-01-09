@@ -407,12 +407,12 @@ export class QloAppsGuestMatchingService {
   async createOrUpdateMapping(
     pmsGuestId: string,
     qloAppsCustomerId: number,
-    qloAppsConfigId: string
+    propertyId: string
   ): Promise<void> {
     const existing = await db('qloapps_customer_mappings')
       .where({
-        qloapps_config_id: qloAppsConfigId,
-        pms_guest_id: pmsGuestId,
+        property_id: propertyId,
+        local_guest_id: pmsGuestId,
       })
       .first();
 
@@ -422,15 +422,19 @@ export class QloAppsGuestMatchingService {
         .update({
           qloapps_customer_id: qloAppsCustomerId.toString(),
           updated_at: new Date(),
-          last_sync_at: new Date(),
+          last_synced_at: new Date(),
         });
     } else {
       await db('qloapps_customer_mappings').insert({
-        qloapps_config_id: qloAppsConfigId,
-        pms_guest_id: pmsGuestId,
+        property_id: propertyId,
+        local_guest_id: pmsGuestId,
         qloapps_customer_id: qloAppsCustomerId.toString(),
-        sync_direction: 'pull',
-        last_sync_at: new Date(),
+        sync_direction: 'bidirectional',
+        match_type: 'booking',
+        is_active: true,
+        is_verified: false,
+        last_synced_at: new Date(),
+        last_sync_status: 'success',
       });
     }
   }
@@ -440,16 +444,16 @@ export class QloAppsGuestMatchingService {
    */
   async getGuestIdFromMapping(
     qloAppsCustomerId: number,
-    qloAppsConfigId: string
+    propertyId: string
   ): Promise<string | null> {
     const mapping = await db('qloapps_customer_mappings')
       .where({
-        qloapps_config_id: qloAppsConfigId,
+        property_id: propertyId,
         qloapps_customer_id: qloAppsCustomerId.toString(),
       })
       .first();
 
-    return mapping?.pms_guest_id || null;
+    return mapping?.local_guest_id || null;
   }
 
   /**
@@ -457,12 +461,12 @@ export class QloAppsGuestMatchingService {
    */
   async getQloAppsCustomerIdFromMapping(
     pmsGuestId: string,
-    qloAppsConfigId: string
+    propertyId: string
   ): Promise<number | null> {
     const mapping = await db('qloapps_customer_mappings')
       .where({
-        qloapps_config_id: qloAppsConfigId,
-        pms_guest_id: pmsGuestId,
+        property_id: propertyId,
+        local_guest_id: pmsGuestId,
       })
       .first();
 
