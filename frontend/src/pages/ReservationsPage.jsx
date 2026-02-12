@@ -42,7 +42,7 @@ const ReservationsPage = () => {
     isModalOpenRef.current = isModalOpen
   }, [isModalOpen])
   
-  // Booking flow state (beds24-style) - 2 steps only
+  // Booking flow state (cm-style) - 2 steps only
   const [bookingStep, setBookingStep] = useState(1) // 1: Dates + Room Type + Room, 2: Guest
   const [checkIn, setCheckIn] = useState(format(addDays(new Date(), 1), 'yyyy-MM-dd'))
   const [checkOut, setCheckOut] = useState(format(addDays(new Date(), 2), 'yyyy-MM-dd'))
@@ -517,7 +517,7 @@ const ReservationsPage = () => {
   }
 
   const SortIcon = ({ column }) => {
-    if (sortBy !== column) return <span className="text-gray-400">↕</span>
+    if (sortBy !== column) return <span className="text-gray-400 dark:text-gray-500">↕</span>
     return sortOrder === 'asc' ? <span>↑</span> : <span>↓</span>
   }
 
@@ -531,8 +531,8 @@ const ReservationsPage = () => {
     <div>
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Reservations</h1>
-          <p className="text-gray-600 mt-2">View and manage all hotel reservations</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Reservations</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">View and manage all hotel reservations</p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
@@ -570,17 +570,17 @@ const ReservationsPage = () => {
 
       {/* Loading state */}
       {reservationsLoading && (
-        <div className="mb-4 text-center text-gray-600">Loading reservations...</div>
+        <div className="mb-4 text-center text-gray-600 dark:text-gray-400">Loading reservations...</div>
       )}
 
       {/* Reservations Table */}
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
                   onClick={() => handleSort('id')}
                 >
                   <div className="flex items-center gap-1">
@@ -624,11 +624,11 @@ const ReservationsPage = () => {
                     <SortIcon column="checkOut" />
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Status
                 </th>
                 <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('totalAmount')}
                 >
                   <div className="flex items-center gap-1">
@@ -636,32 +636,32 @@ const ReservationsPage = () => {
                     <SortIcon column="totalAmount" />
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredAndSortedReservations.map((reservation) => (
-                <tr key={reservation.id} className="hover:bg-gray-50">
+                <tr key={reservation.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 dark:hover:bg-gray-700">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900" title={reservation.id}>
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100" title={reservation.id}>
                       {reservation.id?.substring(0, 8)}...
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{reservation.guestName}</div>
+                    <div className="text-sm text-gray-900 dark:text-gray-100">{reservation.guestName}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{reservation.roomNumber}</div>
+                    <div className="text-sm text-gray-900 dark:text-gray-100">{reservation.roomNumber}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
+                    <div className="text-sm text-gray-900 dark:text-gray-100">
                       {format(parseISO(reservation.checkIn), 'MMM dd, yyyy')}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
+                    <div className="text-sm text-gray-900 dark:text-gray-100">
                       {format(parseISO(reservation.checkOut), 'MMM dd, yyyy')}
                     </div>
                   </td>
@@ -669,7 +669,7 @@ const ReservationsPage = () => {
                     <StatusBadge status={reservation.status} type="reservation" />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       ${reservation.totalAmount?.toLocaleString() || '0'}
                     </div>
                   </td>
@@ -683,7 +683,7 @@ const ReservationsPage = () => {
                       </button>
                     )}
                     {hasInvoice(reservation.id) ? (
-                      <span className="text-gray-400 cursor-not-allowed" title="Invoice already exists">
+                      <span className="text-gray-400 dark:text-gray-500 cursor-not-allowed" title="Invoice already exists">
                         Invoice Created
                       </span>
                     ) : (
@@ -700,16 +700,16 @@ const ReservationsPage = () => {
             </tbody>
           </table>
           {filteredAndSortedReservations.length === 0 && (
-            <div className="text-center py-12 text-gray-500">No reservations found</div>
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400">No reservations found</div>
           )}
         </div>
       </div>
 
-      <div className="mt-4 text-sm text-gray-600">
+      <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
         Showing {filteredAndSortedReservations.length} of {reservations.length} reservations
       </div>
 
-      {/* Add Reservation Modal - Beds24 Style Booking Flow */}
+      {/* Add Reservation Modal - CM Style Booking Flow */}
       <Modal
         isOpen={isModalOpen}
         onClose={resetModal}
@@ -739,7 +739,7 @@ const ReservationsPage = () => {
               {/* Date Selection */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Check-in Date *
                   </label>
                   <input
@@ -752,7 +752,7 @@ const ReservationsPage = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Check-out Date *
                   </label>
                   <input
@@ -768,7 +768,7 @@ const ReservationsPage = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Number of Guests
                   </label>
                   <input
@@ -781,7 +781,7 @@ const ReservationsPage = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Units Requested
                   </label>
                   <input
@@ -797,13 +797,13 @@ const ReservationsPage = () => {
 
               {/* Room Type Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Select Room Type *
                 </label>
                 {loadingAvailability ? (
-                  <div className="text-center py-8 text-gray-500 border rounded-lg">Checking availability...</div>
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400 border rounded-lg">Checking availability...</div>
                 ) : availableRoomTypes.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500 border rounded-lg">
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400 border rounded-lg">
                     {checkIn && checkOut 
                       ? 'No room types available for the selected dates. Please try different dates.'
                       : 'Please select check-in and check-out dates to see available room types'}
@@ -824,13 +824,13 @@ const ReservationsPage = () => {
                           className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
                             isSelected
                               ? 'border-primary-600 bg-primary-50'
-                              : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+                              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md'
                           }`}
                         >
                           <div className="flex justify-between items-start mb-2">
                             <div>
-                              <h3 className="text-lg font-semibold text-gray-900">{roomType.room_type_name}</h3>
-                              <p className="text-sm text-gray-600 capitalize">{roomType.room_type}</p>
+                              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{roomType.room_type_name}</h3>
+                              <p className="text-sm text-gray-600 dark:text-gray-400 capitalize">{roomType.room_type}</p>
                             </div>
                             <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                               roomType.available_units >= unitsRequested
@@ -842,11 +842,11 @@ const ReservationsPage = () => {
                           </div>
                           <div className="space-y-1 text-sm">
                             <div className="flex justify-between">
-                              <span className="text-gray-600">Price per night:</span>
+                              <span className="text-gray-600 dark:text-gray-400">Price per night:</span>
                               <span className="font-medium">${roomType.price_per_night.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-gray-600">Total ({nights} nights, {unitsRequested} unit{unitsRequested > 1 ? 's' : ''}):</span>
+                              <span className="text-gray-600 dark:text-gray-400">Total ({nights} nights, {unitsRequested} unit{unitsRequested > 1 ? 's' : ''}):</span>
                               <span className="font-semibold text-primary-600">${totalPrice.toFixed(2)}</span>
                             </div>
                           </div>
@@ -860,7 +860,7 @@ const ReservationsPage = () => {
               {/* Unit Selection (Optional - shown when room type is selected) */}
               {selectedRoomType && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Select Specific Unit (Optional)
                   </label>
                   <div className="p-3 bg-blue-50 border border-blue-200 rounded-md mb-3">
@@ -926,12 +926,12 @@ const ReservationsPage = () => {
                           className={`border-2 rounded-lg p-3 cursor-pointer transition-all ${
                             selectedUnit === null
                               ? 'border-primary-600 bg-primary-50'
-                              : 'border-gray-200 hover:border-gray-300'
+                              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                           }`}
                         >
                           <div className="flex justify-between items-center">
                             <span className="font-medium">Auto-assign (Recommended)</span>
-                            <span className="text-sm text-gray-600">System will assign best available unit</span>
+                            <span className="text-sm text-gray-600 dark:text-gray-400">System will assign best available unit</span>
                           </div>
                         </div>
                         {units.map((unit) => (
@@ -940,10 +940,10 @@ const ReservationsPage = () => {
                             onClick={() => unit.available && setSelectedUnit(unit.unitIndex)}
                             className={`border-2 rounded-lg p-3 cursor-pointer transition-all ${
                               !unit.available
-                                ? 'border-gray-200 bg-gray-100 opacity-50 cursor-not-allowed'
+                                ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 opacity-50 cursor-not-allowed'
                                 : selectedUnit === unit.unitIndex
                                 ? 'border-primary-600 bg-primary-50'
-                                : 'border-gray-200 hover:border-gray-300'
+                                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                             }`}
                           >
                             <div className="flex justify-between items-center">
@@ -985,22 +985,22 @@ const ReservationsPage = () => {
           {/* Step 2: Guest Selection */}
           {bookingStep === 2 && (
             <div className="space-y-4">
-              <div className="p-3 bg-gray-50 rounded-md">
+              <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
                 <div className="text-sm space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Room Type:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Room Type:</span>
                     <span className="font-medium">{selectedRoomType?.room_type_name}</span>
                   </div>
                   {selectedUnit !== null && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Unit:</span>
+                      <span className="text-gray-600 dark:text-gray-400">Unit:</span>
                       <span className="font-medium">#{selectedUnit + 1}</span>
                     </div>
                   )}
                   {selectedUnit === null && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Unit:</span>
-                      <span className="font-medium text-gray-500">Auto-assign</span>
+                      <span className="text-gray-600 dark:text-gray-400">Unit:</span>
+                      <span className="font-medium text-gray-500 dark:text-gray-400">Auto-assign</span>
                     </div>
                   )}
                   <div className="flex justify-between">
@@ -1015,8 +1015,8 @@ const ReservationsPage = () => {
                     <span className="text-gray-600">Units:</span>
                     <span className="font-medium">{unitsRequested}</span>
                   </div>
-                  <div className="flex justify-between pt-2 border-t border-gray-200">
-                    <span className="text-gray-900 font-medium">Total Amount:</span>
+                  <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
+                    <span className="text-gray-900 dark:text-gray-100 font-medium">Total Amount:</span>
                     <span className="font-semibold text-lg text-primary-600">
                       ${(() => {
                         const nights = Math.ceil(
@@ -1072,7 +1072,7 @@ const ReservationsPage = () => {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Status *
                 </label>
                 <select

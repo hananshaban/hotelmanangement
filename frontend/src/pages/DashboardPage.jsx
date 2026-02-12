@@ -255,7 +255,7 @@ const DashboardPage = () => {
         </div>
         <div className="card">
           <div className="flex items-center justify-center py-8">
-            <div className="text-gray-500">Loading dashboard data...</div>
+            <div className="text-gray-500 dark:text-gray-400">Loading dashboard data...</div>
           </div>
         </div>
       </div>
@@ -281,8 +281,8 @@ const DashboardPage = () => {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-2">Welcome back! Here's an overview of your hotel.</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">Welcome back! Here's an overview of your hotel.</p>
       </div>
 
       {/* Stats Cards */}
@@ -363,7 +363,7 @@ const DashboardPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Reservations by Status - Pie Chart */}
         <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Reservations by Status</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Reservations by Status</h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
@@ -387,7 +387,7 @@ const DashboardPage = () => {
 
         {/* Revenue per Month - Bar Chart */}
         <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue per Month</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Revenue per Month</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={revenueByMonthData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -403,7 +403,7 @@ const DashboardPage = () => {
 
       {/* Occupancy Chart - Full Width */}
       <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Occupancy Over Next 30 Days</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Occupancy Over Next 30 Days</h3>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={occupancyData}>
             <CartesianGrid strokeDasharray="3 3" />
@@ -420,7 +420,7 @@ const DashboardPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         {/* Cancellation Rate Chart */}
         <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Cancellation Rate</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Cancellation Rate</h3>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={[
               { period: 'This Month', rate: cancellationRate },

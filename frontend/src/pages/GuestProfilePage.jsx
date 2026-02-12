@@ -1,14 +1,18 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useMemo, useState } from 'react'
 import { format, parseISO } from 'date-fns'
-import useStore from '../store/useStore'
+import useGuestsStore from '../store/guestsStore'
+import useReservationsStore from '../store/reservationsStore'
+import useInvoicesStore from '../store/invoicesStore'
 import StatusBadge from '../components/StatusBadge'
 import Modal from '../components/Modal'
 
 const GuestProfilePage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { guests, reservations, invoices, updateGuest } = useStore()
+  const { guests, updateGuest } = useGuestsStore()
+  const { reservations } = useReservationsStore()
+  const { invoices } = useInvoicesStore()
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isTagModalOpen, setIsTagModalOpen] = useState(false)
   const [newTag, setNewTag] = useState('')
@@ -40,7 +44,7 @@ const GuestProfilePage = () => {
   if (!guest) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500 mb-4">Guest not found</p>
+        <p className="text-gray-500 dark:text-gray-400 mb-4">Guest not found</p>
         <button onClick={() => navigate('/guests')} className="btn btn-primary">
           Back to Guests
         </button>
@@ -85,8 +89,8 @@ const GuestProfilePage = () => {
         </button>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{guest.name}</h1>
-            <p className="text-gray-600 mt-2">Guest Profile & History</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{guest.name}</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">Guest Profile & History</p>
           </div>
           <button onClick={() => setIsEditModalOpen(true)} className="btn btn-primary">
             Edit Profile
@@ -99,19 +103,19 @@ const GuestProfilePage = () => {
         <div className="lg:col-span-1 space-y-6">
           {/* Basic Info */}
           <div className="card">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Contact Information</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Contact Information</h2>
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium text-gray-700">Email</label>
-                <p className="text-gray-900">{guest.email}</p>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+                <p className="text-gray-900 dark:text-gray-100">{guest.email}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">Phone</label>
-                <p className="text-gray-900">{guest.phone}</p>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Phone</label>
+                <p className="text-gray-900 dark:text-gray-100">{guest.phone}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">Past Stays</label>
-                <p className="text-gray-900">{guest.pastStays || 0}</p>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Past Stays</label>
+                <p className="text-gray-900 dark:text-gray-100">{guest.pastStays || 0}</p>
               </div>
             </div>
           </div>
@@ -119,7 +123,7 @@ const GuestProfilePage = () => {
           {/* Tags */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">Tags</h2>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Tags</h2>
               <button
                 onClick={() => setIsTagModalOpen(true)}
                 className="text-sm text-primary-600 hover:text-primary-800"
@@ -143,25 +147,25 @@ const GuestProfilePage = () => {
                 </span>
               ))}
               {(!guest.tags || guest.tags.length === 0) && (
-                <p className="text-sm text-gray-500">No tags added</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">No tags added</p>
               )}
             </div>
           </div>
 
           {/* Statistics */}
           <div className="card">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Statistics</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Statistics</h2>
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-gray-600">Total Reservations:</span>
+                <span className="text-gray-600 dark:text-gray-400">Total Reservations:</span>
                 <span className="font-semibold">{guestReservations.length}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Total Spent:</span>
-                <span className="font-semibold text-green-600">${totalSpent.toLocaleString()}</span>
+                <span className="text-gray-600 dark:text-gray-400">Total Spent:</span>
+                <span className="font-medium">${totalSpent.toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Invoices:</span>
+                <span className="text-gray-600 dark:text-gray-400">Invoices:</span>
                 <span className="font-semibold">{guestInvoices.length}</span>
               </div>
             </div>
@@ -172,7 +176,7 @@ const GuestProfilePage = () => {
         <div className="lg:col-span-2 space-y-6">
           {/* Notes */}
           <div className="card">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Notes</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Notes</h2>
             <div className="mb-4">
               <textarea
                 value={newNote}
@@ -186,45 +190,45 @@ const GuestProfilePage = () => {
               </button>
             </div>
             {guest.notes ? (
-              <div className="bg-gray-50 p-4 rounded-lg whitespace-pre-wrap text-sm">
+              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg whitespace-pre-wrap text-sm">
                 {guest.notes}
               </div>
             ) : (
-              <p className="text-gray-500 text-sm">No notes yet</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm">No notes yet</p>
             )}
           </div>
 
           {/* Stay History */}
           <div className="card">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Stay History</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Stay History</h2>
             {guestReservations.length === 0 ? (
-              <p className="text-gray-500">No reservations yet</p>
+              <p className="text-gray-500 dark:text-gray-400">No reservations yet</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                         Reservation ID
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                         Room
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                         Check-in
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                         Check-out
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                         Status
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                         Amount
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {guestReservations.map((res) => (
                       <tr key={res.id}>
                         <td className="px-4 py-3 text-sm">{res.id}</td>
@@ -251,32 +255,32 @@ const GuestProfilePage = () => {
 
           {/* Invoices */}
           <div className="card">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Invoices</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Invoices</h2>
             {guestInvoices.length === 0 ? (
-              <p className="text-gray-500">No invoices yet</p>
+              <p className="text-gray-500 dark:text-gray-400">No invoices yet</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                         Invoice ID
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                         Issue Date
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Due Date
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                        Date
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                         Amount
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                         Status
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {guestInvoices.map((inv) => (
                       <tr key={inv.id}>
                         <td className="px-4 py-3 text-sm">{inv.id}</td>
@@ -313,7 +317,7 @@ const GuestProfilePage = () => {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Select Tag</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Tag</label>
             <select
               value={newTag}
               onChange={(e) => setNewTag(e.target.value)}

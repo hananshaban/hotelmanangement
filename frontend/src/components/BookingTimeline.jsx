@@ -74,7 +74,7 @@ const BookingTimeline = () => {
       }
       
       // If no assigned_unit_id (legacy/unassigned reservation), show on first available unit
-      // This handles old reservations and Beds24 bookings that don't specify a unit
+      // This handles old reservations and CM bookings that don't specify a unit
       // We'll show unassigned reservations on unit 0 (first unit)
       if (unitIndex === 0) {
         return true

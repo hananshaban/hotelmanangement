@@ -83,7 +83,7 @@ const MaintenancePage = () => {
   }
 
   const SortIcon = ({ column }) => {
-    if (sortBy !== column) return <span className="text-gray-400">↕</span>
+    if (sortBy !== column) return <span className="text-gray-400 dark:text-gray-500">↕</span>
     return sortOrder === 'asc' ? <span>↑</span> : <span>↓</span>
   }
 
@@ -164,8 +164,8 @@ const MaintenancePage = () => {
     <div>
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Maintenance Requests</h1>
-          <p className="text-gray-600 mt-2">Track and manage room maintenance issues</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Maintenance Requests</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Track and manage room maintenance issues</p>
         </div>
         <button onClick={() => setIsModalOpen(true)} className="btn btn-primary">
           + New Request
@@ -207,20 +207,20 @@ const MaintenancePage = () => {
 
       {/* Loading state */}
       {maintenanceLoading && (
-        <div className="mb-4 text-center text-gray-600">Loading maintenance requests...</div>
+        <div className="mb-4 text-center text-gray-600 dark:text-gray-400">Loading maintenance requests...</div>
       )}
 
       {/* Requests Table */}
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                   Request ID
                 </th>
                 <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('roomNumber')}
                 >
                   <div className="flex items-center gap-1">
@@ -229,7 +229,7 @@ const MaintenancePage = () => {
                   </div>
                 </th>
                 <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('title')}
                 >
                   <div className="flex items-center gap-1">
@@ -258,23 +258,23 @@ const MaintenancePage = () => {
                     <SortIcon column="createdAt" />
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredAndSortedRequests.map((request) => (
-                <tr key={request.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                <tr key={request.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                     {request.id}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {request.roomNumber}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
+                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                     <div className="font-medium">{request.title}</div>
-                    <div className="text-gray-500 text-xs mt-1 truncate max-w-xs">
+                    <div className="text-gray-500 dark:text-gray-400 text-xs mt-1 truncate max-w-xs">
                       {request.description}
                     </div>
                   </td>
@@ -290,7 +290,7 @@ const MaintenancePage = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <StatusBadge status={request.status} type="maintenance" />
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {format(parseISO(request.createdAt), 'MMM dd, yyyy')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -316,7 +316,7 @@ const MaintenancePage = () => {
             </tbody>
           </table>
           {filteredAndSortedRequests.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
               {maintenanceRequests.length === 0
                 ? 'No maintenance requests yet'
                 : 'No requests found matching your filters'}
@@ -342,7 +342,7 @@ const MaintenancePage = () => {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Room Number *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Room Number *</label>
             <select
               value={newRequest.roomNumber}
               onChange={(e) => setNewRequest({ ...newRequest, roomNumber: e.target.value })}
@@ -358,7 +358,7 @@ const MaintenancePage = () => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title *</label>
             <input
               type="text"
               value={newRequest.title}
@@ -369,7 +369,7 @@ const MaintenancePage = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description *</label>
             <textarea
               value={newRequest.description}
               onChange={(e) => setNewRequest({ ...newRequest, description: e.target.value })}
@@ -380,7 +380,7 @@ const MaintenancePage = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Priority *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority *</label>
             <select
               value={newRequest.priority}
               onChange={(e) => setNewRequest({ ...newRequest, priority: e.target.value })}

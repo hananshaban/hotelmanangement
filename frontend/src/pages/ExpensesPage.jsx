@@ -81,7 +81,7 @@ const ExpensesPage = () => {
   }
 
   const SortIcon = ({ column }) => {
-    if (sortBy !== column) return <span className="text-gray-400">↕</span>
+    if (sortBy !== column) return <span className="text-gray-400 dark:text-gray-500">↕</span>
     return sortOrder === 'asc' ? <span>↑</span> : <span>↓</span>
   }
 
@@ -134,8 +134,8 @@ const ExpensesPage = () => {
     <div>
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Expenses</h1>
-          <p className="text-gray-600 mt-2">Track and manage hotel expenses</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Expenses</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Track and manage hotel expenses</p>
         </div>
         <button onClick={() => setIsModalOpen(true)} className="btn btn-primary">
           + Add Expense
@@ -152,16 +152,16 @@ const ExpensesPage = () => {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div className="card">
-          <h3 className="text-sm font-medium text-gray-600 mb-1">Total Expenses</h3>
-          <p className="text-2xl font-bold text-gray-900">${totalExpenses.toLocaleString()}</p>
+          <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Total Expenses</h3>
+          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">${totalExpenses.toLocaleString()}</p>
         </div>
         <div className="card">
-          <h3 className="text-sm font-medium text-gray-600 mb-1">Total Records</h3>
-          <p className="text-2xl font-bold text-gray-900">{expenses.length}</p>
+          <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Total Records</h3>
+          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{expenses.length}</p>
         </div>
         <div className="card">
-          <h3 className="text-sm font-medium text-gray-600 mb-1">Categories</h3>
-          <p className="text-2xl font-bold text-gray-900">
+          <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Categories</h3>
+          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             {Object.keys(expensesByCategory).length}
           </p>
         </div>
@@ -188,17 +188,17 @@ const ExpensesPage = () => {
 
       {/* Loading state */}
       {expensesLoading && (
-        <div className="mb-4 text-center text-gray-600">Loading expenses...</div>
+        <div className="mb-4 text-center text-gray-600 dark:text-gray-400">Loading expenses...</div>
       )}
 
       {/* Expenses Table */}
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
                   onClick={() => handleSort('date')}
                 >
                   <div className="flex items-center gap-1">
@@ -207,7 +207,7 @@ const ExpensesPage = () => {
                   </div>
                 </th>
                 <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('category')}
                 >
                   <div className="flex items-center gap-1">
@@ -215,8 +215,8 @@ const ExpensesPage = () => {
                     <SortIcon column="category" />
                   </div>
                 </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('amount')}
                 >
                   <div className="flex items-center gap-1">
@@ -229,10 +229,10 @@ const ExpensesPage = () => {
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredAndSortedExpenses.map((expense) => (
-                <tr key={expense.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <tr key={expense.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {format(parseISO(expense.date), 'MMM dd, yyyy')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -240,10 +240,10 @@ const ExpensesPage = () => {
                       {expense.category}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                     ${expense.amount.toLocaleString()}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
+                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                     {expense.notes || '-'}
                   </td>
                 </tr>
@@ -251,7 +251,7 @@ const ExpensesPage = () => {
             </tbody>
           </table>
           {filteredAndSortedExpenses.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
               {expenses.length === 0 ? 'No expenses recorded yet' : 'No expenses found matching your filters'}
             </div>
           )}
@@ -274,7 +274,7 @@ const ExpensesPage = () => {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category *</label>
             <select
               value={newExpense.category}
               onChange={(e) => setNewExpense({ ...newExpense, category: e.target.value })}
@@ -290,7 +290,7 @@ const ExpensesPage = () => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Amount ($) *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount ($) *</label>
             <input
               type="number"
               min="0"
@@ -302,7 +302,7 @@ const ExpensesPage = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date *</label>
             <input
               type="date"
               value={newExpense.date}
@@ -312,7 +312,7 @@ const ExpensesPage = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</label>
             <textarea
               value={newExpense.notes}
               onChange={(e) => setNewExpense({ ...newExpense, notes: e.target.value })}

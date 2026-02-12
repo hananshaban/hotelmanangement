@@ -42,7 +42,7 @@ const useRoomsStore = create((set, get) => ({
       const backendData = {
         room_number: roomData.roomNumber,
         type: roomData.type,
-        room_type: roomData.roomType, // Required Beds24 room type
+        room_type: roomData.roomType, // Required CM room type
         status: roomData.status || 'Available',
         price_per_night: roomData.pricePerNight,
         floor: roomData.floor,

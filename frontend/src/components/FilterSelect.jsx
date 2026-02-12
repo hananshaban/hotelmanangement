@@ -2,7 +2,7 @@ const FilterSelect = ({ value, onChange, options, placeholder = "All", label }) 
   return (
     <div className="flex flex-col">
       {label && (
-        <label className="text-sm font-medium text-gray-700 mb-1">{label}</label>
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
       )}
       <select
         value={value}

@@ -56,32 +56,17 @@ const AvailabilityPage = () => {
 
       setLoading(true)
       try {
-        console.log('Fetching availability with params:', {
-          checkIn,
-          checkOut,
-          room_type: roomTypeFilter || undefined,
-          max_people: numGuests > 0 ? numGuests : undefined,
-          units_requested: unitsRequested,
-        })
-
         const result = await getAvailableRoomTypes(checkIn, checkOut, {
           room_type: roomTypeFilter || undefined,
           max_people: numGuests > 0 ? numGuests : undefined,
           units_requested: unitsRequested,
         })
 
-        console.log('Availability result:', result)
-
         // Handle both possible response structures (defensive coding)
         const roomTypes = result?.room_types || result || []
         const finalRoomTypes = Array.isArray(roomTypes) ? roomTypes : []
         
-        console.log('Setting room types:', finalRoomTypes)
         setAvailableRoomTypes(finalRoomTypes)
-
-        if (finalRoomTypes.length === 0) {
-          console.log('No room types found for criteria')
-        }
       } catch (error) {
         console.error('Error checking availability:', error)
         toast.error(error.message || 'Failed to check availability')
@@ -175,15 +160,15 @@ const AvailabilityPage = () => {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Room Availability</h1>
-        <p className="text-gray-600 mt-2">Search for available rooms by date and preferences</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Room Availability</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">Search for available rooms by date and preferences</p>
       </div>
 
       {/* Search Filters */}
       <div className="card mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Check-in Date *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Check-in Date *</label>
             <input
               type="date"
               value={checkIn}
@@ -194,7 +179,7 @@ const AvailabilityPage = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Check-out Date *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Check-out Date *</label>
             <input
               type="date"
               value={checkOut}
@@ -205,7 +190,7 @@ const AvailabilityPage = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Room Type</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Room Type</label>
             <select value={roomTypeFilter} onChange={(e) => setRoomTypeFilter(e.target.value)} className="input">
               {beds24RoomTypeOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -215,7 +200,7 @@ const AvailabilityPage = () => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Number of Guests</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Number of Guests</label>
             <input
               type="number"
               min="1"
@@ -226,7 +211,7 @@ const AvailabilityPage = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Units Requested</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Units Requested</label>
             <input
               type="number"
               min="1"
@@ -246,7 +231,7 @@ const AvailabilityPage = () => {
         </h2>
 
         {loading ? (
-          <div className="text-center py-12 text-gray-500">Checking availability...</div>
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400">Checking availability...</div>
         ) : availableRoomTypes.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
             {!checkIn || !checkOut
@@ -265,8 +250,8 @@ const AvailabilityPage = () => {
                 <div key={roomType.room_type_id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{roomType.room_type_name}</h3>
-                      <p className="text-sm text-gray-600 capitalize">{roomType.room_type}</p>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{roomType.room_type_name}</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 capitalize">{roomType.room_type}</p>
                     </div>
                     <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
                       {roomType.available_units}/{roomType.total_units} available
@@ -275,11 +260,11 @@ const AvailabilityPage = () => {
 
                   <div className="space-y-2 mb-4">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Price per night:</span>
-                      <span className="font-medium">${roomType.price_per_night.toFixed(2)}</span>
+                      <span className="text-gray-600 dark:text-gray-400">Price per night:</span>
+                      <span className="font-semibold">${roomType.price_per_night?.toLocaleString() || 0}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Total ({nights} nights, {unitsRequested} unit{unitsRequested > 1 ? 's' : ''}):</span>
+                      <span className="text-gray-600 dark:text-gray-400">Total ({nights} nights, {unitsRequested} unit{unitsRequested > 1 ? 's' : ''}):</span>
                       <span className="font-semibold text-primary-600">${totalPrice.toFixed(2)}</span>
                     </div>
                     <div className="text-sm text-gray-600">
@@ -336,28 +321,28 @@ const AvailabilityPage = () => {
               Available: {selectedRoomType?.available_units || 0} units
             </p>
           </div>
-          <div className="bg-gray-50 p-4 rounded-lg">
+          <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Room Type:</span>
-                <span className="font-medium">{selectedRoomType?.room_type_name}</span>
+                <span className="text-gray-600 dark:text-gray-400">Room Type:</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{selectedRoomType?.room_type_name || 'N/A'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Check-in:</span>
-                <span className="font-medium">{format(parseISO(checkIn), 'MMM dd, yyyy')}</span>
+                <span className="text-gray-600 dark:text-gray-400">Check-in:</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{format(parseISO(checkIn), 'MMM dd, yyyy')}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Check-out:</span>
-                <span className="font-medium">{format(parseISO(checkOut), 'MMM dd, yyyy')}</span>
+                <span className="text-gray-600 dark:text-gray-400">Check-out:</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{format(parseISO(checkOut), 'MMM dd, yyyy')}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Units:</span>
-                <span className="font-medium">{unitsRequested}</span>
+                <span className="text-gray-600 dark:text-gray-400">Units:</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{unitsRequested}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Total Amount:</span>
-                <span className="font-semibold text-lg">
-                  ${selectedRoomType ? (selectedRoomType.price_per_night * Math.ceil((parseISO(checkOut).getTime() - parseISO(checkIn).getTime()) / (1000 * 60 * 60 * 24)) * unitsRequested).toFixed(2) : '0.00'}
+                <span className="text-gray-600 dark:text-gray-400">Total Amount:</span>
+                <span className="font-semibold text-lg text-gray-900 dark:text-gray-100">
+                  ${selectedRoomType ? ((selectedRoomType.price_per_night || 0) * Math.ceil((parseISO(checkOut).getTime() - parseISO(checkIn).getTime()) / (1000 * 60 * 60 * 24)) * unitsRequested).toFixed(2) : '0.00'}
                 </span>
               </div>
             </div>

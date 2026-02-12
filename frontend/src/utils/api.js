@@ -621,3 +621,5 @@ export const api = {
 };
 
 export { ApiError };
+
+export default api;

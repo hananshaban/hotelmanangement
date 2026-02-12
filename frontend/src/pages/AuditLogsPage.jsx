@@ -105,7 +105,7 @@ const AuditLogsPage = () => {
     
     const backendColumn = columnMap[column] || column;
     
-    if (sortBy !== backendColumn) return <span className="text-gray-400">↕</span>
+    if (sortBy !== backendColumn) return <span className="text-gray-400 dark:text-gray-500">↕</span>
     return sortOrder === 'asc' ? <span>↑</span> : <span>↓</span>
   }
 
@@ -150,8 +150,8 @@ const AuditLogsPage = () => {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Audit Logs</h1>
-        <p className="text-gray-600 mt-2">Track all system actions and changes</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Audit Logs</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">Track all system actions and changes</p>
       </div>
 
       {/* Filters */}
@@ -183,7 +183,7 @@ const AuditLogsPage = () => {
       {/* Loading/Error States */}
       {loading && (
         <div className="card text-center py-12">
-          <p className="text-gray-500">Loading audit logs...</p>
+          <p className="text-gray-500 dark:text-gray-400">Loading audit logs...</p>
         </div>
       )}
 
@@ -198,10 +198,10 @@ const AuditLogsPage = () => {
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
                   onClick={() => handleSort('timestamp')}
                 >
                   <div className="flex items-center gap-1">
@@ -209,11 +209,11 @@ const AuditLogsPage = () => {
                     <SortIcon column="timestamp" />
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                   Staff
                 </th>
                 <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('action')}
                 >
                   <div className="flex items-center gap-1">
@@ -222,7 +222,7 @@ const AuditLogsPage = () => {
                   </div>
                 </th>
                 <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('entityType')}
                 >
                   <div className="flex items-center gap-1">
@@ -230,20 +230,20 @@ const AuditLogsPage = () => {
                     <SortIcon column="entityType" />
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                   Name / ID
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredAndSortedLogs.map((log) => (
-                <tr key={log.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     <div className="flex flex-col">
                       <span className="font-medium text-gray-900">
                         {format(parseISO(log.timestamp), 'MMM dd, yyyy')}
                       </span>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-500 dark:text-gray-300">
                         {format(parseISO(log.timestamp), 'HH:mm:ss')}
                       </span>
                     </div>
@@ -268,7 +268,7 @@ const AuditLogsPage = () => {
                           {log.entityName}
                         </span>
                       )}
-                      <span className="text-xs text-gray-500 font-mono" title={log.entityId}>
+                      <span className="text-xs text-gray-500 dark:text-gray-300 font-mono" title={log.entityId}>
                         {truncateId(log.entityId)}
                       </span>
                     </div>
@@ -278,7 +278,7 @@ const AuditLogsPage = () => {
             </tbody>
           </table>
           {filteredAndSortedLogs.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
               {auditLogs.length === 0
                 ? 'No audit logs yet'
                 : 'No logs found matching your filters'}
@@ -289,7 +289,7 @@ const AuditLogsPage = () => {
       )}
 
       {!loading && (
-        <div className="mt-4 text-sm text-gray-600">
+        <div className="mt-4 text-sm text-gray-600 dark:text-gray-300">
           Showing {filteredAndSortedLogs.length} of {total} audit logs
         </div>
       )}

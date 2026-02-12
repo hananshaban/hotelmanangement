@@ -29,7 +29,7 @@ const CalendarPage = () => {
     isModalOpenRef.current = isModalOpen
   }, [isModalOpen])
   
-  // Booking flow state (beds24-style) - 2 steps only
+  // Booking flow state (cm-style) - 2 steps only
   const [bookingStep, setBookingStep] = useState(1) // 1: Dates + Room Type + Room, 2: Guest
   const [checkIn, setCheckIn] = useState('')
   const [checkOut, setCheckOut] = useState('')
@@ -359,11 +359,11 @@ const CalendarPage = () => {
       case 'Checked-in':
         return 'bg-green-500'
       case 'Checked-out':
-        return 'bg-gray-500'
+        return 'bg-gray-500 dark:bg-gray-400'
       case 'Cancelled':
         return 'bg-red-500'
       default:
-        return 'bg-gray-500'
+        return 'bg-gray-500 dark:bg-gray-400'
     }
   }
 
@@ -379,8 +379,8 @@ const CalendarPage = () => {
     <div>
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Reservations Calendar</h1>
-          <p className="text-gray-600 mt-2">View and manage reservations on the calendar</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Reservations Calendar</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">View and manage reservations on the calendar</p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
@@ -396,7 +396,7 @@ const CalendarPage = () => {
           <button onClick={prevMonth} className="btn btn-secondary">
             ← Previous
           </button>
-          <h2 className="text-2xl font-bold text-gray-900">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             {format(currentDate, 'MMMM yyyy')}
           </h2>
           <button onClick={nextMonth} className="btn btn-secondary">
@@ -408,7 +408,7 @@ const CalendarPage = () => {
         <div className="grid grid-cols-7 gap-2">
           {/* Day Headers */}
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-            <div key={day} className="text-center font-semibold text-gray-700 py-2">
+            <div key={day} className="text-center font-semibold text-gray-700 dark:text-gray-300 py-2">
               {day}
             </div>
           ))}
@@ -422,12 +422,12 @@ const CalendarPage = () => {
             return (
               <div
                 key={day.toISOString()}
-                className={`min-h-[100px] border rounded-lg p-2 cursor-pointer hover:bg-gray-50 transition-colors ${
-                  !isCurrentMonth ? 'bg-gray-50 opacity-50' : 'bg-white'
+                className={`min-h-[100px] border rounded-lg p-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                  !isCurrentMonth ? 'bg-gray-50 dark:bg-gray-700 opacity-50' : 'bg-white dark:bg-gray-800'
                 } ${isTodayDate ? 'ring-2 ring-primary-500' : ''}`}
                 onClick={() => handleDateClick(day)}
               >
-                <div className={`text-sm font-medium mb-1 ${isTodayDate ? 'text-primary-600' : 'text-gray-700'}`}>
+                <div className={`text-sm font-medium mb-1 ${isTodayDate ? 'text-primary-600' : 'text-gray-700 dark:text-gray-300'}`}>
                   {format(day, 'd')}
                 </div>
                 <div className="space-y-1">
@@ -445,7 +445,7 @@ const CalendarPage = () => {
                     </div>
                   ))}
                   {dayReservations.length > 3 && (
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
                       +{dayReservations.length - 3} more
                     </div>
                   )}
@@ -469,7 +469,7 @@ const CalendarPage = () => {
             <span className="text-sm">Checked-in</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-gray-500 rounded"></div>
+            <div className="w-4 h-4 bg-gray-500 dark:bg-gray-400 rounded"></div>
             <span className="text-sm">Checked-out</span>
           </div>
           <div className="flex items-center gap-2">
@@ -488,38 +488,38 @@ const CalendarPage = () => {
         >
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-gray-700">Reservation ID</label>
-              <p className="text-gray-900">{selectedReservation.id}</p>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Reservation ID</label>
+              <p className="text-gray-900 dark:text-gray-100">{selectedReservation.id}</p>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Guest Name</label>
-              <p className="text-gray-900">{selectedReservation.guestName}</p>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Guest Name</label>
+              <p className="text-gray-900 dark:text-gray-100">{selectedReservation.guestName}</p>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Room Number</label>
-              <p className="text-gray-900">{selectedReservation.roomNumber}</p>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Room Number</label>
+              <p className="text-gray-900 dark:text-gray-100">{selectedReservation.roomNumber}</p>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Check-in</label>
-              <p className="text-gray-900">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Check-in</label>
+              <p className="text-gray-900 dark:text-gray-100">
                 {format(parseISO(selectedReservation.checkIn), 'MMM dd, yyyy')}
               </p>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Check-out</label>
-              <p className="text-gray-900">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Check-out</label>
+              <p className="text-gray-900 dark:text-gray-100">
                 {format(parseISO(selectedReservation.checkOut), 'MMM dd, yyyy')}
               </p>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Status</label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
               <div className="mt-1">
                 <StatusBadge status={selectedReservation.status} type="reservation" />
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Total Amount</label>
-              <p className="text-gray-900">${selectedReservation.totalAmount?.toLocaleString() || '0'}</p>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Total Amount</label>
+              <p className="text-gray-900 dark:text-gray-100">${selectedReservation.totalAmount?.toLocaleString() || '0'}</p>
             </div>
           </div>
         </Modal>
@@ -555,7 +555,7 @@ const CalendarPage = () => {
               {/* Date Selection */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Check-in Date *
                   </label>
                   <input
@@ -568,7 +568,7 @@ const CalendarPage = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Check-out Date *
                   </label>
                   <input
@@ -584,7 +584,7 @@ const CalendarPage = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Number of Guests
                   </label>
                   <input
@@ -597,7 +597,7 @@ const CalendarPage = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Units Requested
                   </label>
                   <input
@@ -613,13 +613,13 @@ const CalendarPage = () => {
 
               {/* Room Type Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Select Room Type *
                 </label>
                 {loadingAvailability ? (
-                  <div className="text-center py-8 text-gray-500 border rounded-lg">Checking availability...</div>
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400 border rounded-lg">Checking availability...</div>
                 ) : availableRoomTypes.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500 border rounded-lg">
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400 border rounded-lg">
                     {checkIn && checkOut 
                       ? 'No room types available for the selected dates. Please try different dates.'
                       : 'Please select check-in and check-out dates to see available room types'}
@@ -640,13 +640,13 @@ const CalendarPage = () => {
                           className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
                             isSelected
                               ? 'border-primary-600 bg-primary-50'
-                              : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+                              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md'
                           }`}
                         >
                           <div className="flex justify-between items-start mb-2">
                             <div>
-                              <h3 className="text-lg font-semibold text-gray-900">{roomType.room_type_name}</h3>
-                              <p className="text-sm text-gray-600 capitalize">{roomType.room_type}</p>
+                              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{roomType.room_type_name}</h3>
+                              <p className="text-sm text-gray-600 dark:text-gray-400 capitalize">{roomType.room_type}</p>
                             </div>
                             <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                               roomType.available_units >= unitsRequested
@@ -658,11 +658,11 @@ const CalendarPage = () => {
                           </div>
                           <div className="space-y-1 text-sm">
                             <div className="flex justify-between">
-                              <span className="text-gray-600">Price per night:</span>
+                              <span className="text-gray-600 dark:text-gray-400">Price per night:</span>
                               <span className="font-medium">${roomType.price_per_night.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-gray-600">Total ({nights} nights, {unitsRequested} unit{unitsRequested > 1 ? 's' : ''}):</span>
+                              <span className="text-gray-600 dark:text-gray-400">Total ({nights} nights, {unitsRequested} unit{unitsRequested > 1 ? 's' : ''}):</span>
                               <span className="font-semibold text-primary-600">${totalPrice.toFixed(2)}</span>
                             </div>
                           </div>
@@ -676,7 +676,7 @@ const CalendarPage = () => {
               {/* Unit Selection */}
               {selectedRoomType && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Select Specific Unit (Optional)
                   </label>
                   <div className="p-3 bg-blue-50 border border-blue-200 rounded-md mb-3">
@@ -717,12 +717,12 @@ const CalendarPage = () => {
                           className={`border-2 rounded-lg p-3 cursor-pointer transition-all ${
                             selectedUnit === null
                               ? 'border-primary-600 bg-primary-50'
-                              : 'border-gray-200 hover:border-gray-300'
+                              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                           }`}
                         >
                           <div className="flex justify-between items-center">
                             <span className="font-medium">Auto-assign (Recommended)</span>
-                            <span className="text-sm text-gray-600">System will assign best available unit</span>
+                            <span className="text-sm text-gray-600 dark:text-gray-400">System will assign best available unit</span>
                           </div>
                         </div>
                         {units.map((unit) => (
@@ -731,10 +731,10 @@ const CalendarPage = () => {
                             onClick={() => unit.available && setSelectedUnit(unit.unitIndex)}
                             className={`border-2 rounded-lg p-3 cursor-pointer transition-all ${
                               !unit.available
-                                ? 'border-gray-200 bg-gray-100 opacity-50 cursor-not-allowed'
-                                : selectedUnit === unit.unitIndex
-                                ? 'border-primary-600 bg-primary-50'
-                                : 'border-gray-200 hover:border-gray-300'
+                                ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 opacity-50 cursor-not-allowed'
+                                : selectedUnit === index
+                                ? 'border-primary-500 bg-primary-50'
+                                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                             }`}
                           >
                             <div className="flex justify-between items-center">
@@ -776,38 +776,38 @@ const CalendarPage = () => {
           {/* Step 2: Guest Selection */}
           {bookingStep === 2 && (
             <div className="space-y-4">
-              <div className="p-3 bg-gray-50 rounded-md">
+              <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
                 <div className="text-sm space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Room Type:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Room Type:</span>
                     <span className="font-medium">{selectedRoomType?.room_type_name}</span>
                   </div>
                   {selectedUnit !== null && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Unit:</span>
+                      <span className="text-gray-600 dark:text-gray-400">Unit:</span>
                       <span className="font-medium">#{selectedUnit + 1}</span>
                     </div>
                   )}
                   {selectedUnit === null && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Unit:</span>
-                      <span className="font-medium text-gray-500">Auto-assign</span>
+                      <span className="text-gray-600 dark:text-gray-400">Unit:</span>
+                      <span className="font-medium text-gray-500 dark:text-gray-400">Auto-assign</span>
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Check-in:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Check-in:</span>
                     <span className="font-medium">{format(parseISO(checkIn), 'MMM dd, yyyy')}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Check-out:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Check-out:</span>
                     <span className="font-medium">{format(parseISO(checkOut), 'MMM dd, yyyy')}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Units:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Units:</span>
                     <span className="font-medium">{unitsRequested}</span>
                   </div>
-                  <div className="flex justify-between pt-2 border-t border-gray-200">
-                    <span className="text-gray-900 font-medium">Total Amount:</span>
+                  <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
+                    <span className="text-gray-900 dark:text-gray-100 font-medium">Total Amount:</span>
                     <span className="font-semibold text-lg text-primary-600">
                       ${(() => {
                         const nights = Math.ceil(
@@ -858,7 +858,7 @@ const CalendarPage = () => {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Status *
                 </label>
                 <select

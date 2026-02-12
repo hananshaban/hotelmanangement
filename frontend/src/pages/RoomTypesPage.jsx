@@ -35,7 +35,7 @@ const RoomTypesPage = () => {
   });
   const [featureInput, setFeatureInput] = useState('');
 
-  const beds24RoomTypeOptions = [
+  const cmRoomTypeOptions = [
     { value: 'single', label: 'Single' },
     { value: 'double', label: 'Double' },
     { value: 'twin', label: 'Twin' },
@@ -258,8 +258,8 @@ const RoomTypesPage = () => {
     <div>
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Room Types</h1>
-          <p className="text-gray-600 mt-2">Manage room types with quantity (synced from QloApps)</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Room Types</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Manage room types with quantity (synced from channel manager)</p>
         </div>
         <div className="flex gap-3">
           <button
@@ -311,7 +311,7 @@ const RoomTypesPage = () => {
             onChange={setRoomTypeFilter}
             options={[
               { value: '', label: 'All Types' },
-              ...beds24RoomTypeOptions,
+              ...cmRoomTypeOptions,
             ]}
             placeholder="Filter by room type"
           />
@@ -328,7 +328,7 @@ const RoomTypesPage = () => {
           </div>
           <div className="ml-3 flex-1">
             <p className="text-sm text-blue-700">
-              <strong>Note:</strong> Room quantities are automatically synced from QloApps based on individual room instances. 
+              <strong>Note:</strong> Room quantities are automatically synced from channel manager based on individual room instances. 
               Click the <strong>Refresh</strong> button after syncing to see updated quantities.
             </p>
           </div>
@@ -339,35 +339,35 @@ const RoomTypesPage = () => {
       <div className="card">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Name
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Type
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Quantity
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Price/Night
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Max People
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Floor
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredRoomTypes.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                     {isLoading ? 'Loading...' : 'No room types found'}
                   </td>
                 </tr>
@@ -377,9 +377,9 @@ const RoomTypesPage = () => {
                   const hasLongDescription = roomType.description && roomType.description.length > 100;
                   
                   return (
-                  <tr key={roomType.id} className="hover:bg-gray-50">
+                  <tr key={roomType.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{roomType.name}</div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{roomType.name}</div>
                       {roomType.description && (
                         <div className="text-sm text-gray-500 mt-1">
                           <div className={hasLongDescription && !isExpanded ? 'line-clamp-2' : ''}>
@@ -401,22 +401,22 @@ const RoomTypesPage = () => {
                         {roomType.roomType}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-lg">{roomType.qty}</span>
-                        <span className="text-gray-500">units</span>
+                        <span className="text-gray-500 dark:text-gray-400">units</span>
                       </div>
                       <div className="text-xs text-gray-400 mt-1">
-                        From QloApps
+                        From CM
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                       ${roomType.pricePerNight.toFixed(2)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                       {roomType.maxPeople || 'N/A'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                       {roomType.floor || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -466,7 +466,7 @@ const RoomTypesPage = () => {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Name *
             </label>
             <input
@@ -481,14 +481,14 @@ const RoomTypesPage = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Beds24 Room Type *
+                Channel Manager Room Type *
               </label>
               <select
                 value={newRoomType.room_type}
                 onChange={(e) => setNewRoomType({ ...newRoomType, room_type: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {beds24RoomTypeOptions.map((option) => (
+                {cmRoomTypeOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -497,7 +497,7 @@ const RoomTypesPage = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Quantity (Units) *
               </label>
               <input
@@ -513,7 +513,7 @@ const RoomTypesPage = () => {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Price per Night *
               </label>
               <input
@@ -527,7 +527,7 @@ const RoomTypesPage = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Floor
               </label>
               <input
@@ -542,7 +542,7 @@ const RoomTypesPage = () => {
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Max People
               </label>
               <input
@@ -614,7 +614,7 @@ const RoomTypesPage = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Features
             </label>
             <div className="flex gap-2 mb-2">

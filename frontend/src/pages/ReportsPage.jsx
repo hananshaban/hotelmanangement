@@ -254,15 +254,15 @@ const ReportsPage = () => {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Reports & Export</h1>
-        <p className="text-gray-600 mt-2">Export data in CSV or JSON format</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Reports & Export</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">Export data in CSV or JSON format</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Reservations Export */}
         <div className="card">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Reservations</h2>
-          <p className="text-sm text-gray-600 mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Reservations</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
             Export {reservations.length} reservation records
           </p>
           <div className="flex gap-2">
@@ -285,8 +285,8 @@ const ReportsPage = () => {
 
         {/* Guests Export */}
         <div className="card">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Guests</h2>
-          <p className="text-sm text-gray-600 mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Guests</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
             Export {guests.length} guest records
           </p>
           <div className="flex gap-2">
@@ -309,8 +309,8 @@ const ReportsPage = () => {
 
         {/* Invoices Export */}
         <div className="card">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Invoices</h2>
-          <p className="text-sm text-gray-600 mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Invoices</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
             Export {invoices.length} invoice records
           </p>
           <div className="flex gap-2">
@@ -333,8 +333,8 @@ const ReportsPage = () => {
 
         {/* Expenses Export */}
         <div className="card">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Expenses</h2>
-          <p className="text-sm text-gray-600 mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Expenses</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
             Export {expenses.length} expense records
           </p>
           <div className="flex gap-2">

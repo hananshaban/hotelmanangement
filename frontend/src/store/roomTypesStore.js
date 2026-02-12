@@ -38,7 +38,7 @@ const useRoomTypesStore = create((set, get) => ({
     features: Array.isArray(rt.features) ? rt.features : [],
     description: rt.description,
     units: Array.isArray(rt.units) ? rt.units : [],
-    beds24RoomId: rt.beds24_room_id,
+    cmRoomId: rt.cm_room_id,
     createdAt: rt.created_at,
     updatedAt: rt.updated_at,
   }),

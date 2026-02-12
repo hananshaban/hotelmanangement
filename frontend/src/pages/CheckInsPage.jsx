@@ -166,16 +166,16 @@ const CheckInsPage = () => {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div>
+      <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Check-ins</h1>
-          <p className="text-gray-600">Manage active and historical check-ins</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Check-ins</h1>
+          <p className="text-gray-600 dark:text-gray-400">Manage active and historical check-ins</p>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <SearchInput
             value={searchTerm}
@@ -195,7 +195,7 @@ const CheckInsPage = () => {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="check_in_time">Check-in Time</option>
               <option value="guest_name">Guest Name</option>
@@ -203,7 +203,7 @@ const CheckInsPage = () => {
             </select>
             <button
               onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               {sortOrder === 'asc' ? '↑' : '↓'}
             </button>
@@ -240,57 +240,57 @@ const CheckInsPage = () => {
       </div>
 
       {/* Check-ins Table */}
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           {loading ? (
-            <div className="p-8 text-center text-gray-500">Loading check-ins...</div>
+            <div className="p-8 text-center text-gray-500 dark:text-gray-400">Loading check-ins...</div>
           ) : error ? (
             <div className="p-8 text-center text-red-500">Error: {error}</div>
           ) : filteredAndSortedCheckIns.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">No check-ins found</div>
+            <div className="p-8 text-center text-gray-500 dark:text-gray-400">No check-ins found</div>
           ) : (
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Guest
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Room
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Check-in Time
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Checkout Time
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {filteredAndSortedCheckIns.map((checkIn) => (
-                  <tr key={checkIn.id} className="hover:bg-gray-50">
+                  <tr key={checkIn.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                         {checkIn.guest_name || 'Unknown Guest'}
                       </div>
-                      <div className="text-sm text-gray-500">{checkIn.guest_email}</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">{checkIn.guest_email}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                         Room {checkIn.room_number}
                       </div>
-                      <div className="text-sm text-gray-500">{checkIn.room_type_name}</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">{checkIn.room_type_name}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {formatDateTime(checkIn.check_in_time)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {checkIn.status === 'checked_out'
                         ? formatDateTime(checkIn.actual_checkout_time)
                         : format(parseISO(checkIn.expected_checkout_time), 'MMM dd, yyyy')}
@@ -344,29 +344,29 @@ const CheckInsPage = () => {
         >
           <div className="space-y-4">
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Guest Information</h3>
-              <p className="mt-1 text-sm text-gray-900">{selectedCheckIn.guest_name}</p>
-              <p className="text-sm text-gray-500">{selectedCheckIn.guest_email}</p>
-              <p className="text-sm text-gray-500">{selectedCheckIn.guest_phone}</p>
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Guest Information</h3>
+              <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">{selectedCheckIn.guest_name}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{selectedCheckIn.guest_email}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{selectedCheckIn.guest_phone}</p>
             </div>
 
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Room Information</h3>
-              <p className="mt-1 text-sm text-gray-900">
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Room Information</h3>
+              <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">
                 Room {selectedCheckIn.room_number} - {selectedCheckIn.room_type_name}
               </p>
             </div>
 
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Check-in Details</h3>
-              <p className="mt-1 text-sm text-gray-900">
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Check-in Details</h3>
+              <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">
                 Check-in: {formatDateTime(selectedCheckIn.check_in_time)}
               </p>
-              <p className="text-sm text-gray-900">
+              <p className="text-sm text-gray-900 dark:text-gray-100">
                 Expected Checkout: {format(parseISO(selectedCheckIn.expected_checkout_time), 'MMM dd, yyyy')}
               </p>
               {selectedCheckIn.status === 'checked_out' && (
-                <p className="text-sm text-gray-900">
+                <p className="text-sm text-gray-900 dark:text-gray-100">
                   Actual Checkout: {formatDateTime(selectedCheckIn.actual_checkout_time)}
                 </p>
               )}
@@ -374,13 +374,13 @@ const CheckInsPage = () => {
 
             {selectedCheckIn.notes && (
               <div>
-                <h3 className="text-sm font-medium text-gray-500">Notes</h3>
-                <p className="mt-1 text-sm text-gray-900">{selectedCheckIn.notes}</p>
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Notes</h3>
+                <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">{selectedCheckIn.notes}</p>
               </div>
             )}
 
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Status</h3>
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</h3>
               <div className="mt-1">
                 <StatusBadge
                   status={
@@ -397,7 +397,7 @@ const CheckInsPage = () => {
                 setIsDetailsModalOpen(false);
                 setSelectedCheckIn(null);
               }}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               Close
             </button>
@@ -440,21 +440,21 @@ const CheckInsPage = () => {
         >
           <div className="space-y-4">
             <div>
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-gray-700 dark:text-gray-300">
                 Checkout <strong>{selectedCheckIn.guest_name}</strong> from Room{' '}
                 <strong>{selectedCheckIn.room_number}</strong>?
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Notes (Optional)
               </label>
               <textarea
                 value={checkoutNotes}
                 onChange={(e) => setCheckoutNotes(e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Any notes about the checkout..."
               />
             </div>
@@ -467,7 +467,7 @@ const CheckInsPage = () => {
                 setCheckoutNotes('');
                 setSelectedCheckIn(null);
               }}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               Cancel
             </button>
@@ -496,18 +496,18 @@ const CheckInsPage = () => {
         >
           <div className="space-y-4">
             <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-gray-700 dark:text-gray-300">
                 Change room for <strong>{selectedCheckIn.guest_name}</strong> currently in Room{' '}
                 <strong>{selectedCheckIn.room_number}</strong>
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 New Room <span className="text-red-500">*</span>
               </label>
               {loadingRooms ? (
-                <div className="text-sm text-gray-500">Loading available rooms...</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">Loading available rooms...</div>
               ) : availableRooms.length === 0 ? (
                 <div className="text-sm text-red-500">
                   No available rooms found. All rooms may be occupied or under maintenance.
@@ -516,7 +516,7 @@ const CheckInsPage = () => {
                 <select
                   value={selectedNewRoom}
                   onChange={(e) => setSelectedNewRoom(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
                   <option value="">Select a room...</option>
@@ -530,13 +530,13 @@ const CheckInsPage = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Reason for Change <span className="text-red-500">*</span>
               </label>
               <select
                 value={changeReason}
                 onChange={(e) => setChangeReason(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="guest_request">Guest Request</option>
                 <option value="upgrade">Upgrade</option>
@@ -547,14 +547,14 @@ const CheckInsPage = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Additional Notes (Optional)
               </label>
               <textarea
                 value={changeNotes}
                 onChange={(e) => setChangeNotes(e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Any additional notes about the room change..."
               />
             </div>
@@ -569,7 +569,7 @@ const CheckInsPage = () => {
                 setChangeNotes('');
                 setSelectedCheckIn(null);
               }}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               Cancel
             </button>

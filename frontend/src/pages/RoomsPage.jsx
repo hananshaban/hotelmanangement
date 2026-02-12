@@ -153,20 +153,20 @@ const RoomsPage = () => {
     <div>
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Rooms Management</h1>
-          <p className="text-gray-600 mt-2">View all room units and manage housekeeping</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Rooms Management</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">View all room units and manage housekeeping</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 mb-6">
+      <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
         <nav className="-mb-px flex space-x-8">
           <button
             onClick={() => setActiveTab('rooms')}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'rooms'
                 ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
             }`}
           >
             Rooms
@@ -176,7 +176,7 @@ const RoomsPage = () => {
             className={`py-4 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'housekeeping'
                 ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
             }`}
           >
             Housekeeping
@@ -222,15 +222,15 @@ const RoomsPage = () => {
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Room Number
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Type
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Room Type Name
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -253,19 +253,19 @@ const RoomsPage = () => {
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredRooms.map((room) => (
-                <tr key={room.id} className="hover:bg-gray-50">
+                <tr key={room.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 dark:hover:bg-gray-700">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       {room.roomNumber}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{room.type}</div>
+                    <div className="text-sm text-gray-900 dark:text-gray-100">{room.type}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{room.roomTypeName}</div>
+                    <div className="text-sm text-gray-900 dark:text-gray-100">{room.roomTypeName}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <StatusBadge status={room.status} type="room" />
@@ -282,23 +282,23 @@ const RoomsPage = () => {
                         >
                           {room.guestName}
                         </button>
-                        <div className="text-xs text-gray-500">Checked-in</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Checked-in</div>
                       </div>
                     ) : (
-                      <div className="text-sm text-gray-400">-</div>
+                      <div className="text-sm text-gray-400 dark:text-gray-500">-</div>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">${room.pricePerNight?.toFixed(2) || '0.00'}</div>
+                    <div className="text-sm text-gray-900 dark:text-gray-100">${room.pricePerNight?.toFixed(2) || '0.00'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{room.floor || 'N/A'}</div>
+                    <div className="text-sm text-gray-900 dark:text-gray-100">{room.floor || 'N/A'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{room.maxPeople || 'N/A'}</div>
+                    <div className="text-sm text-gray-900 dark:text-gray-100">{room.maxPeople || 'N/A'}</div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
                       {room.features?.length > 0 ? room.features.join(', ') : 'N/A'}
                     </div>
                   </td>
@@ -307,15 +307,15 @@ const RoomsPage = () => {
             </tbody>
           </table>
           {(roomsLoading || roomTypesLoading || housekeepingLoading) && filteredRooms.length === 0 && (
-            <div className="text-center py-12 text-gray-500">Loading rooms...</div>
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading rooms...</div>
           )}
           {!roomsLoading && !roomTypesLoading && !housekeepingLoading && filteredRooms.length === 0 && (
-            <div className="text-center py-12 text-gray-500">No rooms found. Rooms will appear here after syncing from QloApps.</div>
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400">No rooms found. Rooms will appear here after syncing from channel manager.</div>
           )}
         </div>
       </div>
 
-      <div className="mt-4 text-sm text-gray-600">
+      <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
         Showing {filteredRooms.length} of {enrichedRooms.length} rooms
       </div>
         </>
@@ -350,9 +350,9 @@ const RoomsPage = () => {
           <div className="card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                       Room Number
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -361,27 +361,27 @@ const RoomsPage = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Cleaning Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                       Last Cleaned
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                       Assigned Staff
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {filteredHousekeeping.map((item) => {
                     const { room, ...hk } = item
 
                     return (
-                      <tr key={room.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <tr key={room.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                           {room.roomNumber}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 capitalize">
                           {room.type}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -390,7 +390,7 @@ const RoomsPage = () => {
                             type="housekeeping"
                           />
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                           {hk.lastCleaned
                             ? format(parseISO(hk.lastCleaned), 'MMM dd, yyyy HH:mm')
                             : 'Never'}
@@ -480,7 +480,7 @@ const RoomsPage = () => {
             </div>
           </div>
           {filteredHousekeeping.length === 0 && (
-            <div className="text-center py-12 text-gray-500">No rooms found</div>
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400">No rooms found</div>
           )}
         </>
       )}
@@ -497,45 +497,45 @@ const RoomsPage = () => {
         >
           <div className="space-y-4">
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Guest Information</h3>
-              <p className="mt-1 text-sm text-gray-900">{selectedRoomCheckIn.guest_name}</p>
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Guest Information</h3>
+              <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">{selectedRoomCheckIn.guest_name}</p>
               {selectedRoomCheckIn.guest_email && (
-                <p className="text-sm text-gray-500">{selectedRoomCheckIn.guest_email}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{selectedRoomCheckIn.guest_email}</p>
               )}
               {selectedRoomCheckIn.guest_phone && (
-                <p className="text-sm text-gray-500">{selectedRoomCheckIn.guest_phone}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{selectedRoomCheckIn.guest_phone}</p>
               )}
             </div>
 
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Room Information</h3>
-              <p className="mt-1 text-sm text-gray-900">
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Room Information</h3>
+              <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">
                 Room {selectedRoomCheckIn.room_number}
               </p>
               {selectedRoomCheckIn.room_type_name && (
-                <p className="text-sm text-gray-500">{selectedRoomCheckIn.room_type_name}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{selectedRoomCheckIn.room_type_name}</p>
               )}
             </div>
 
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Check-in Details</h3>
-              <p className="mt-1 text-sm text-gray-900">
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Check-in Details</h3>
+              <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">
                 Check-in: {selectedRoomCheckIn.check_in_time ? format(parseISO(selectedRoomCheckIn.check_in_time), 'MMM dd, yyyy HH:mm') : 'N/A'}
               </p>
-              <p className="text-sm text-gray-900">
+              <p className="text-sm text-gray-900 dark:text-gray-100">
                 Expected Checkout: {selectedRoomCheckIn.expected_checkout_time ? format(parseISO(selectedRoomCheckIn.expected_checkout_time), 'MMM dd, yyyy') : 'N/A'}
               </p>
             </div>
 
             {selectedRoomCheckIn.notes && (
               <div>
-                <h3 className="text-sm font-medium text-gray-500">Notes</h3>
-                <p className="mt-1 text-sm text-gray-900">{selectedRoomCheckIn.notes}</p>
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Notes</h3>
+                <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">{selectedRoomCheckIn.notes}</p>
               </div>
             )}
 
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Status</h3>
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</h3>
               <div className="mt-1">
                 <StatusBadge
                   status={selectedRoomCheckIn.status === 'checked_in' ? 'Checked In' : 'Checked Out'}
@@ -550,7 +550,7 @@ const RoomsPage = () => {
                 setIsCheckInModalOpen(false);
                 setSelectedRoomCheckIn(null);
               }}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               Close
             </button>

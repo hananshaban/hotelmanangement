@@ -249,3 +249,4 @@ Target coverage for check-ins feature:
 - Mock date/time for consistent test results
 - Isolate components in tests (mock child components if needed)
 
+

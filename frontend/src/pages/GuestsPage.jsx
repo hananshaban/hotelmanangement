@@ -70,7 +70,7 @@ const GuestsPage = () => {
   }
 
   const SortIcon = ({ column }) => {
-    if (sortBy !== column) return <span className="text-gray-400">↕</span>
+    if (sortBy !== column) return <span className="text-gray-400 dark:text-gray-500">↕</span>
     return sortOrder === 'asc' ? <span>↑</span> : <span>↓</span>
   }
 
@@ -110,8 +110,8 @@ const GuestsPage = () => {
     <div>
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Guests</h1>
-          <p className="text-gray-600 mt-2">View and manage guest information</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Guests</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">View and manage guest information</p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
@@ -130,7 +130,7 @@ const GuestsPage = () => {
 
       {/* Loading state */}
       {guestsLoading && (
-        <div className="mb-4 text-center text-gray-600">Loading guests...</div>
+        <div className="mb-4 text-center text-gray-600 dark:text-gray-400">Loading guests...</div>
       )}
 
       {/* Search */}
@@ -146,10 +146,10 @@ const GuestsPage = () => {
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
                   onClick={() => handleSort('name')}
                 >
                   <div className="flex items-center gap-1">
@@ -158,7 +158,7 @@ const GuestsPage = () => {
                   </div>
                 </th>
                 <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('phone')}
                 >
                   <div className="flex items-center gap-1">
@@ -166,8 +166,8 @@ const GuestsPage = () => {
                     <SortIcon column="phone" />
                   </div>
                 </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('email')}
                 >
                   <div className="flex items-center gap-1">
@@ -184,32 +184,32 @@ const GuestsPage = () => {
                     <SortIcon column="pastStays" />
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Notes
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredAndSortedGuests.map((guest) => (
                 <tr
                   key={guest.id}
-                  className="hover:bg-gray-50 cursor-pointer"
+                  className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                   onClick={() => navigate(`/guests/${guest.id}`)}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{guest.name}</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{guest.name}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{guest.phone}</div>
+                    <div className="text-sm text-gray-900 dark:text-gray-100">{guest.phone}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{guest.email}</div>
+                    <div className="text-sm text-gray-900 dark:text-gray-100">{guest.email}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{guest.pastStays}</div>
+                    <div className="text-sm text-gray-900 dark:text-gray-100">{guest.pastStays}</div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="text-sm text-gray-500 max-w-xs truncate">
+                    <div className="text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">
                       {guest.notes || '-'}
                     </div>
                   </td>
@@ -218,12 +218,12 @@ const GuestsPage = () => {
             </tbody>
           </table>
           {filteredAndSortedGuests.length === 0 && (
-            <div className="text-center py-12 text-gray-500">No guests found</div>
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400">No guests found</div>
           )}
         </div>
       </div>
 
-      <div className="mt-4 text-sm text-gray-600">
+      <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
         Showing {filteredAndSortedGuests.length} of {guests.length} guests
       </div>
 
@@ -244,7 +244,7 @@ const GuestsPage = () => {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Name *
             </label>
             <input
@@ -256,7 +256,7 @@ const GuestsPage = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Email
             </label>
             <input
@@ -267,7 +267,7 @@ const GuestsPage = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Phone
             </label>
             <input
@@ -278,7 +278,7 @@ const GuestsPage = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Past Stays
             </label>
             <input
@@ -290,7 +290,7 @@ const GuestsPage = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Notes
             </label>
             <textarea

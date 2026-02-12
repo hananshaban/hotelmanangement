@@ -71,7 +71,7 @@ const InvoicesPage = () => {
   }
 
   const SortIcon = ({ column }) => {
-    if (sortBy !== column) return <span className="text-gray-400">↕</span>
+    if (sortBy !== column) return <span className="text-gray-400 dark:text-gray-500">↕</span>
     return sortOrder === 'asc' ? <span>↑</span> : <span>↓</span>
   }
 
@@ -127,8 +127,8 @@ const InvoicesPage = () => {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Invoices / Accounting</h1>
-        <p className="text-gray-600 mt-2">View and manage all invoices</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Invoices / Accounting</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">View and manage all invoices</p>
       </div>
 
       {/* Error message */}
@@ -159,17 +159,17 @@ const InvoicesPage = () => {
 
       {/* Loading state */}
       {invoicesLoading && (
-        <div className="mb-4 text-center text-gray-600">Loading invoices...</div>
+        <div className="mb-4 text-center text-gray-600 dark:text-gray-400">Loading invoices...</div>
       )}
 
       {/* Invoices Table */}
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
                   onClick={() => handleSort('id')}
                 >
                   <div className="flex items-center gap-1">
@@ -177,14 +177,14 @@ const InvoicesPage = () => {
                     <SortIcon column="id" />
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Reservation ID
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Guest
                 </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('issueDate')}
                 >
                   <div className="flex items-center gap-1">
@@ -202,7 +202,7 @@ const InvoicesPage = () => {
                   </div>
                 </th>
                 <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('amount')}
                 >
                   <div className="flex items-center gap-1">
@@ -210,45 +210,45 @@ const InvoicesPage = () => {
                     <SortIcon column="amount" />
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Payment Method
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredAndSortedInvoices.map((invoice) => (
-                  <tr key={invoice.id} className="hover:bg-gray-50">
+                  <tr key={invoice.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 dark:hover:bg-gray-700">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900" title={invoice.id}>
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100" title={invoice.id}>
                         {invoice.id?.substring(0, 8)}...
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900" title={invoice.reservationId || ''}>
+                      <div className="text-sm text-gray-900 dark:text-gray-100" title={invoice.reservationId || ''}>
                         {invoice.reservationId ? `${invoice.reservationId.substring(0, 8)}...` : '-'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{invoice.guestName || 'Unknown Guest'}</div>
+                      <div className="text-sm text-gray-900 dark:text-gray-100">{invoice.guestName || 'Unknown Guest'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
+                      <div className="text-sm text-gray-900 dark:text-gray-100">
                         {format(parseISO(invoice.issueDate), 'MMM dd, yyyy')}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
+                      <div className="text-sm text-gray-900 dark:text-gray-100">
                         {format(parseISO(invoice.dueDate), 'MMM dd, yyyy')}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                         ${invoice.amount.toLocaleString()}
                       </div>
                     </td>
@@ -279,10 +279,10 @@ const InvoicesPage = () => {
                         </div>
                       )}
                       {invoice.status === 'Paid' && (
-                        <span className="text-gray-400">-</span>
+                        <span className="text-gray-400 dark:text-gray-500">-</span>
                       )}
                       {invoice.status === 'Cancelled' && (
-                        <span className="text-gray-400">-</span>
+                        <span className="text-gray-400 dark:text-gray-500">-</span>
                       )}
                     </td>
                   </tr>
@@ -290,7 +290,7 @@ const InvoicesPage = () => {
             </tbody>
           </table>
           {filteredAndSortedInvoices.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
               {invoices.length === 0
                 ? 'No invoices yet. Create invoices from reservations.'
                 : 'No invoices found matching your filters.'}
@@ -299,7 +299,7 @@ const InvoicesPage = () => {
         </div>
       </div>
 
-      <div className="mt-4 text-sm text-gray-600">
+      <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
         Showing {filteredAndSortedInvoices.length} of {invoices.length} invoices
       </div>
 
@@ -316,20 +316,20 @@ const InvoicesPage = () => {
         <div className="space-y-4">
           {selectedInvoice && (
             <>
-              <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                 <div className="text-sm space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Invoice ID:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Invoice ID:</span>
                     <span className="font-medium">{selectedInvoice.id}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Amount:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Amount:</span>
                     <span className="font-semibold">${selectedInvoice.amount.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Payment Method *
                 </label>
                 <select

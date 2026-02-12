@@ -10,6 +10,7 @@ const MainLayout = ({ children, onLogout }) => {
   const { darkMode, toggleDarkMode } = useStore()
   const { hotels, activeHotelId, switchHotel, getActiveHotel } = useAuthStore()
   const [isHotelDropdownOpen, setIsHotelDropdownOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const handleLogout = () => {
     onLogout()
@@ -49,8 +50,16 @@ const MainLayout = ({ children, onLogout }) => {
 
   return (
     <div className={`min-h-screen ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
+      {/* Mobile sidebar backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 w-64 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-r flex flex-col`}>
+      <div className={`fixed inset-y-0 left-0 w-64 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-r flex flex-col z-50 transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         {/* Logo */}
         <div className={`flex items-center justify-center h-16 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
           <h1 className={`text-xl font-bold ${darkMode ? 'text-primary-400' : 'text-primary-600'}`}>Hotel Manager</h1>
@@ -118,11 +127,12 @@ const MainLayout = ({ children, onLogout }) => {
         )}
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-2">
+        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
           {navigation.map((item) => (
             <Link
               key={item.path}
               to={item.path}
+              onClick={() => setSidebarOpen(false)}
               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
                 isActive(item.path)
                   ? darkMode
@@ -156,25 +166,42 @@ const MainLayout = ({ children, onLogout }) => {
       </div>
 
       {/* Main Content */}
-      <div className="pl-64">
+      <div className="lg:pl-64">
         {/* Header */}
         <header className={`sticky top-0 z-30 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b`}>
-          <div className="flex items-center justify-end px-8 py-4 gap-4">
-            <Notifications />
+          <div className="flex items-center justify-between px-4 lg:px-8 py-4 gap-4">
+            {/* Hamburger menu for mobile */}
             <button
-              onClick={toggleDarkMode}
-              className={`p-2 rounded-lg transition-colors ${
+              onClick={() => setSidebarOpen(true)}
+              className={`lg:hidden p-2 rounded-lg transition-colors ${
                 darkMode
-                  ? 'bg-gray-700 text-yellow-400 hover:bg-gray-600'
+                  ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
-              title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              aria-label="Open menu"
             >
-              {darkMode ? '☀️' : '🌙'}
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
             </button>
+
+            <div className="flex items-center gap-4">
+              <Notifications />
+              <button
+                onClick={toggleDarkMode}
+                className={`p-2 rounded-lg transition-colors ${
+                  darkMode
+                    ? 'bg-gray-700 text-yellow-400 hover:bg-gray-600'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              >
+                {darkMode ? '☀️' : '🌙'}
+              </button>
+            </div>
           </div>
         </header>
-        <main className={`p-8 ${darkMode ? 'bg-gray-900' : ''}`}>{children}</main>
+        <main className={`p-4 lg:p-8 ${darkMode ? 'bg-gray-900' : ''}`}>{children}</main>
       </div>
     </div>
   )
