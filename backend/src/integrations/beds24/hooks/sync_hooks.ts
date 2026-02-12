@@ -166,7 +166,7 @@ export async function queueRoomAvailabilitySyncHook(roomId: string): Promise<voi
 
     // Check if room is mapped to Beds24
     const room = await db('rooms').where({ id: roomId }).first();
-    if (!room?.beds24_room_id) {
+    if (!room?.cm_room_id) {
       return; // Room not mapped to Beds24, skip
     }
 
@@ -180,11 +180,11 @@ export async function queueRoomAvailabilitySyncHook(roomId: string): Promise<voi
       event_type: 'availability.update',
       entity_type: 'availability',
       entity_internal_id: roomId,
-      entity_external_id: room.beds24_room_id,
+      entity_external_id: room.cm_room_id,
       idempotency_key: idempotencyKey,
       payload: {
         roomId,
-        beds24RoomId: room.beds24_room_id,
+        beds24RoomId: room.cm_room_id,
       },
     });
 
@@ -194,7 +194,7 @@ export async function queueRoomAvailabilitySyncHook(roomId: string): Promise<voi
       {
         channelEventId: channelEvent.id,
         roomId,
-        beds24RoomId: room.beds24_room_id,
+        beds24RoomId: room.cm_room_id,
       },
       {
         messageId: channelEvent.id,
@@ -219,7 +219,7 @@ export async function queueRoomRatesSyncHook(roomId: string): Promise<void> {
     }
 
     const room = await db('rooms').where({ id: roomId }).first();
-    if (!room?.beds24_room_id) {
+    if (!room?.cm_room_id) {
       return;
     }
 
@@ -233,11 +233,11 @@ export async function queueRoomRatesSyncHook(roomId: string): Promise<void> {
       event_type: 'rate.update',
       entity_type: 'rate',
       entity_internal_id: roomId,
-      entity_external_id: room.beds24_room_id,
+      entity_external_id: room.cm_room_id,
       idempotency_key: idempotencyKey,
       payload: {
         roomId,
-        beds24RoomId: room.beds24_room_id,
+        beds24RoomId: room.cm_room_id,
         pricePerNight: room.price_per_night,
       },
     });
@@ -248,7 +248,7 @@ export async function queueRoomRatesSyncHook(roomId: string): Promise<void> {
       {
         channelEventId: channelEvent.id,
         roomId,
-        beds24RoomId: room.beds24_room_id,
+        beds24RoomId: room.cm_room_id,
         pricePerNight: room.price_per_night,
       },
       {
@@ -274,7 +274,7 @@ export async function queueAllRoomsAvailabilitySyncHook(): Promise<void> {
     }
 
     const rooms = await db('rooms')
-      .whereNotNull('beds24_room_id')
+      .whereNotNull('cm_room_id')
       .select('id');
 
     for (const room of rooms) {

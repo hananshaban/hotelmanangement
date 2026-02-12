@@ -50,18 +50,18 @@ export class QloAppsRoomTypePushSyncService {
   private client: QloAppsClient;
   private configId: string;
   private hotelId: string;
-  private hotelId: number;
+  private qloAppsHotelId: number;
 
   constructor(
     client: QloAppsClient,
     configId: string,
     hotelId: string,
-    hotelId: number
+    qloAppsHotelId: number
   ) {
     this.client = client;
     this.configId = configId;
     this.hotelId = hotelId;
-    this.hotelId = hotelId;
+    this.qloAppsHotelId = qloAppsHotelId;
   }
 
   /**
@@ -350,7 +350,7 @@ export class QloAppsRoomTypePushSyncService {
     try {
       // Get all QloApps room types for this hotel
       const qloAppsRoomTypes = await this.client.getRoomTypes({
-        hotelId: this.hotelId,
+        hotelId: this.qloAppsHotelId,
         active: true,
       });
 

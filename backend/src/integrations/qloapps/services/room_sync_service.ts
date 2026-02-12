@@ -80,13 +80,13 @@ export class QloAppsRoomSyncService {
   private client: QloAppsClient;
   private configId: string;
   private hotelId: string;
-  private hotelId: number;
+  private qloAppsHotelId: number;
 
-  constructor(client: QloAppsClient, configId: string, hotelId: string, hotelId: number) {
+  constructor(client: QloAppsClient, configId: string, hotelId: string, qloAppsHotelId: number) {
     this.client = client;
     this.configId = configId;
     this.hotelId = hotelId;
-    this.hotelId = hotelId;
+    this.qloAppsHotelId = qloAppsHotelId;
   }
 
   /**
@@ -129,7 +129,7 @@ export class QloAppsRoomSyncService {
     try {
       // Build fetch parameters
       const params: GetHotelRoomsParams = {
-        hotelId: this.hotelId,
+        hotelId: this.qloAppsHotelId,
         limit: QLOAPPS_CONFIG.HOTEL_ROOMS_BATCH_SIZE,
       };
 

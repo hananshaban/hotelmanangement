@@ -77,7 +77,7 @@ export async function getPmsRoomsWithMappingHandler(
 ) {
   try {
     const rooms = await db('rooms')
-      .select('id', 'room_number', 'type', 'status', 'beds24_room_id')
+      .select('id', 'room_number', 'type', 'status', 'cm_room_id as beds24_room_id')
       .orderBy('room_number', 'asc');
 
     res.json(rooms);

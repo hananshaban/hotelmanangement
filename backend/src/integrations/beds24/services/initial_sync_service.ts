@@ -183,9 +183,9 @@ export class InitialSyncService {
 
       console.log(`Found ${beds24Rooms.length} rooms in Beds24`);
 
-      // Get existing PMS room types (new Beds24-style)
+      // Get existing PMS room types (new CM-style)
       const pmsRoomTypes = await db('room_types')
-        .select('id', 'name', 'beds24_room_id', 'room_type', 'price_per_night', 'floor')
+        .select('id', 'name', 'cm_room_id', 'room_type', 'price_per_night', 'floor')
         .whereNull('deleted_at');
 
       // Auto-create/update room types from Beds24 rooms

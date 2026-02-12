@@ -78,13 +78,13 @@ export class QloAppsRoomTypeSyncService {
   private client: QloAppsClient;
   private configId: string;
   private hotelId: string;
-  private hotelId: number;
+  private qloAppsHotelId: number;
 
-  constructor(client: QloAppsClient, configId: string, hotelId: string, hotelId: number) {
+  constructor(client: QloAppsClient, configId: string, hotelId: string, qloAppsHotelId: number) {
     this.client = client;
     this.configId = configId;
     this.hotelId = hotelId;
-    this.hotelId = hotelId;
+    this.qloAppsHotelId = qloAppsHotelId;
   }
 
   /**

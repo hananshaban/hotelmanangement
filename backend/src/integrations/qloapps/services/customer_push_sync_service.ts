@@ -52,18 +52,18 @@ export class QloAppsCustomerPushSyncService {
   private client: QloAppsClient;
   private configId: string;
   private hotelId: string;
-  private hotelId: number;
+  private qloAppsHotelId: number;
 
   constructor(
     client: QloAppsClient,
     configId: string,
     hotelId: string,
-    hotelId: number
+    qloAppsHotelId: number
   ) {
     this.client = client;
     this.configId = configId;
     this.hotelId = hotelId;
-    this.hotelId = hotelId;
+    this.qloAppsHotelId = qloAppsHotelId;
   }
 
   /**
@@ -300,7 +300,7 @@ export class QloAppsCustomerPushSyncService {
       hotel_id: this.hotelId,
       local_guest_id: guestId,
       qloapps_customer_id: qloAppsCustomerId.toString(),
-      qloapps_hotel_id: this.hotelId.toString(),
+      qloapps_hotel_id: this.qloAppsHotelId.toString(),
       match_type: matchType,
       sync_direction: 'outbound',
       is_active: true,

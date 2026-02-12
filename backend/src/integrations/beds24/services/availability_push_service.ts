@@ -154,16 +154,16 @@ export class AvailabilityPushService {
   ): Promise<BatchSyncResult> {
     const range = dateRange || getDefaultDateRange();
 
-    // Get all room types with Beds24 mapping (new Beds24-style)
+    // Get all room types with Beds24 mapping (new CM-style)
     const roomTypes = await db('room_types')
-      .whereNotNull('beds24_room_id')
+      .whereNotNull('cm_room_id')
       .whereNull('deleted_at')
-      .select('id', 'beds24_room_id');
+      .select('id', 'cm_room_id as beds24_room_id');
 
     // Get all individual rooms with Beds24 mapping (legacy)
     const rooms = await db('rooms')
-      .whereNotNull('beds24_room_id')
-      .select('id', 'beds24_room_id');
+      .whereNotNull('cm_room_id')
+      .select('id', 'cm_room_id as beds24_room_id');
 
     const results: SyncResult[] = [];
 
@@ -213,17 +213,17 @@ export class AvailabilityPushService {
       if (isRoomType) {
         room = await db('room_types').where({ id: roomId }).whereNull('deleted_at').first();
         if (room) {
-          beds24RoomId = room.beds24_room_id;
+          beds24RoomId = room.cm_room_id;
         }
       } else {
         room = await db('rooms').where({ id: roomId }).first();
         if (room) {
-          beds24RoomId = room.beds24_room_id;
+          beds24RoomId = room.cm_room_id;
         } else {
           // Fallback: try as room type
           room = await db('room_types').where({ id: roomId }).whereNull('deleted_at').first();
           if (room) {
-            beds24RoomId = room.beds24_room_id;
+            beds24RoomId = room.cm_room_id;
           }
         }
       }

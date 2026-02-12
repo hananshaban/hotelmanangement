@@ -2,7 +2,7 @@ import type { Knex } from 'knex';
 
 /**
  * Migration to create room_types table
- * This replaces the individual rooms model with Beds24-style room types with quantity
+ * This replaces the individual rooms model with CM-style room types with quantity
  */
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('room_types', (table) => {
@@ -10,7 +10,7 @@ export async function up(knex: Knex): Promise<void> {
     
     // Basic information
     table.string('name', 255).notNullable().comment('Room type name (e.g., "Double Room", "Suite")');
-    table.string('room_type', 50).notNullable().comment('Beds24 room type enum');
+    table.string('room_type', 50).notNullable().comment('Channel Manager room type enum');
     table.integer('qty').notNullable().defaultTo(1).comment('Number of units of this room type (1-99)');
     
     // Pricing
@@ -51,8 +51,8 @@ export async function up(knex: Knex): Promise<void> {
     table.text('description').nullable();
     table.jsonb('units').defaultTo('[]').comment('Array of unit objects for multi-unit rooms');
     
-    // Beds24 integration
-    table.string('beds24_room_id', 255).nullable();
+    // Channel Manager integration
+    table.string('beds24_room_id', 255).nullable().comment('Channel Manager room ID (legacy: beds24_room_id)');
     
     // Metadata
     table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now());

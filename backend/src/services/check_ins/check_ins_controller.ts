@@ -111,7 +111,7 @@ export async function getCheckInHandler(
       return;
     }
 
-    const checkIn = await getCheckInDetails(id, hotelId);
+    const checkIn = await getCheckInDetails(id!, hotelId!);
     res.json(checkIn);
   } catch (error: any) {
     if (error.message.includes('not found')) {
@@ -206,12 +206,12 @@ export async function checkOutHandler(
     }
 
     const request: CheckOutRequest = {
-      checkin_id: id,
+      checkin_id: id!,
       actual_checkout_time: req.body.actual_checkout_time,
       notes: req.body.notes,
     };
 
-    const checkIn = await checkOutGuest(request, hotelId);
+    const checkIn = await checkOutGuest(request, hotelId!);
 
     // Audit log
     await logUpdate(req, 'check_in', checkIn.id, {}, checkIn);
@@ -264,7 +264,7 @@ export async function changeRoomHandler(
     }
 
     const request: RoomChangeRequest = {
-      checkin_id: id,
+      checkin_id: id!,
       new_room_id: req.body.new_room_id,
       change_reason: req.body.change_reason,
       notes: req.body.notes,
@@ -278,7 +278,7 @@ export async function changeRoomHandler(
       return;
     }
 
-    const checkIn = await changeRoom(request, hotelId, userId);
+    const checkIn = await changeRoom(request, hotelId!, userId);
 
     // Audit log
     await logAction(
@@ -286,7 +286,9 @@ export async function changeRoomHandler(
       'change_room',
       'check_in',
       checkIn.id,
-      `Changed room from ${checkIn.room_assignments?.[checkIn.room_assignments.length - 2]?.to_room_number || 'unknown'} to ${checkIn.actual_room_number}`,
+      {
+        description: `Changed room from ${checkIn.room_assignments?.[checkIn.room_assignments.length - 2]?.to_room_number || 'unknown'} to ${checkIn.actual_room_number}`,
+      },
     );
 
     res.json(checkIn);
@@ -332,7 +334,7 @@ export async function getEligibleRoomsHandler(
       return;
     }
 
-    const eligibleRooms = await getEligibleRooms(id, hotelId);
+    const eligibleRooms = await getEligibleRooms(id!, hotelId!);
     res.json(eligibleRooms);
   } catch (error: any) {
     if (error.message.includes('not found')) {
@@ -388,7 +390,7 @@ export async function checkInFromReservationHandler(
 
     if (!actualRoomId) {
       // Auto-select first available room
-      const eligibleRooms = await getEligibleRooms(id, hotelId);
+      const eligibleRooms = await getEligibleRooms(id!, hotelId!);
       
       if (eligibleRooms.available_rooms.length === 0) {
         res.status(409).json({
@@ -398,19 +400,20 @@ export async function checkInFromReservationHandler(
       }
 
       // Prefer reserved room if available, otherwise first available
-      actualRoomId = eligibleRooms.reserved_room_id
-        ? eligibleRooms.available_rooms.find(r => r.id === eligibleRooms.reserved_room_id)?.id || eligibleRooms.available_rooms[0].id
-        : eligibleRooms.available_rooms[0].id;
+      const matchedRoom = eligibleRooms.reserved_room_id
+        ? eligibleRooms.available_rooms.find(r => r.id === eligibleRooms.reserved_room_id)
+        : null;
+      actualRoomId = matchedRoom?.id || eligibleRooms.available_rooms[0]?.id;
     }
 
     const request: CheckInRequest = {
-      reservation_id: id,
-      actual_room_id: actualRoomId,
+      reservation_id: id!,
+      actual_room_id: actualRoomId!,
       notes: req.body.notes,
       check_in_time: req.body.check_in_time,
     };
 
-    const checkIn = await checkInGuest(request, hotelId, userId);
+    const checkIn = await checkInGuest(request, hotelId!, userId);
 
     // Audit log
     await logCreate(req, 'check_in', checkIn.id, checkIn);
@@ -436,4 +439,5 @@ export async function checkInFromReservationHandler(
     next(error);
   }
 }
+
 

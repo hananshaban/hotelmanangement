@@ -157,8 +157,8 @@ export interface RoomResponse {
   unit_allocation?: string | null; // 'perBooking' | 'perGuest'
   units?: Beds24Unit[] | null; // Array of unit objects for multi-unit rooms
   
-  // Beds24 integration
-  beds24_room_id?: string | null;
+  // Channel Manager integration
+  cm_room_id?: string | null;
   
   created_at: string;
   updated_at: string;

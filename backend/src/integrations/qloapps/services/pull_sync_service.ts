@@ -98,21 +98,21 @@ export class QloAppsPullSyncService {
   private client: QloAppsClient;
   private configId: string;
   private hotelId: string;
-  private hotelId: number;
+  private qloAppsHotelId: number;
   private guestMatchingService: QloAppsGuestMatchingService;
   private roomTypeSyncService: QloAppsRoomTypeSyncService;
   private roomSyncService: QloAppsRoomSyncService;
   private customerSyncService: QloAppsCustomerSyncService;
 
-  constructor(client: QloAppsClient, configId: string, hotelId: string, hotelId: number) {
+  constructor(client: QloAppsClient, configId: string, hotelId: string, qloAppsHotelId: number) {
     this.client = client;
     this.configId = configId;
     this.hotelId = hotelId;
-    this.hotelId = hotelId;
+    this.qloAppsHotelId = qloAppsHotelId;
     this.guestMatchingService = new QloAppsGuestMatchingService();
-    this.roomTypeSyncService = new QloAppsRoomTypeSyncService(client, configId, hotelId, hotelId);
-    this.roomSyncService = new QloAppsRoomSyncService(client, configId, hotelId, hotelId);
-    this.customerSyncService = new QloAppsCustomerSyncService(client, configId, hotelId, hotelId);
+    this.roomTypeSyncService = new QloAppsRoomTypeSyncService(client, configId, hotelId, qloAppsHotelId);
+    this.roomSyncService = new QloAppsRoomSyncService(client, configId, hotelId, qloAppsHotelId);
+    this.customerSyncService = new QloAppsCustomerSyncService(client, configId, hotelId, qloAppsHotelId);
   }
 
   /**

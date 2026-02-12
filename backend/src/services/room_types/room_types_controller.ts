@@ -155,7 +155,7 @@ export async function createRoomTypeHandler(
         features: JSON.stringify(data.features || []),
         description: data.description || null,
         units: JSON.stringify(data.units || []),
-        beds24_room_id: data.beds24_room_id || null,
+        cm_room_id: data.cm_room_id || null,
       })
       .returning('*');
 
@@ -256,7 +256,7 @@ export async function updateRoomTypeHandler(
     if (data.features !== undefined) updateData.features = JSON.stringify(data.features);
     if (data.description !== undefined) updateData.description = data.description;
     if (data.units !== undefined) updateData.units = JSON.stringify(data.units);
-    if (data.beds24_room_id !== undefined) updateData.beds24_room_id = data.beds24_room_id;
+    if (data.cm_room_id !== undefined) updateData.cm_room_id = data.cm_room_id;
 
     // Update room type
     const [roomType] = await db('room_types')

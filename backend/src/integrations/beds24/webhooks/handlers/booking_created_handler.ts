@@ -51,13 +51,13 @@ export async function handleBookingCreated(booking: Beds24Booking | any): Promis
       );
     }
 
-    // Find room type by beds24_room_id (preferred) or fallback to individual room
+    // Find room type by cm_room_id (preferred) or fallback to individual room
     let roomTypeId: string | null = null;
     let roomId: string | null = null;
 
-    // Try to find room type first (new Beds24-style with unitId support)
+    // Try to find room type first (new CM-style with unitId support)
     const roomType = await db('room_types')
-      .where({ beds24_room_id: normalizedBooking.roomId?.toString() })
+      .where({ cm_room_id: normalizedBooking.roomId?.toString() })
       .whereNull('deleted_at')
       .first();
 
@@ -66,7 +66,7 @@ export async function handleBookingCreated(booking: Beds24Booking | any): Promis
     } else {
       // Fallback to individual room (legacy)
       const room = await db('rooms')
-        .where({ beds24_room_id: normalizedBooking.roomId?.toString() })
+        .where({ cm_room_id: normalizedBooking.roomId?.toString() })
         .first();
 
       if (!room) {

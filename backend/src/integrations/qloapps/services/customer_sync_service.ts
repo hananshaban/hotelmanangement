@@ -54,14 +54,14 @@ export class QloAppsCustomerSyncService {
   private client: QloAppsClient;
   private configId: string;
   private hotelId: string;
-  private hotelId: number;
+  private qloAppsHotelId: number;
   private guestMatchingService: QloAppsGuestMatchingService;
 
-  constructor(client: QloAppsClient, configId: string, hotelId: string, hotelId: number) {
+  constructor(client: QloAppsClient, configId: string, hotelId: string, qloAppsHotelId: number) {
     this.client = client;
     this.configId = configId;
     this.hotelId = hotelId;
-    this.hotelId = hotelId;
+    this.qloAppsHotelId = qloAppsHotelId;
     this.guestMatchingService = new QloAppsGuestMatchingService();
   }
 
@@ -109,7 +109,7 @@ export class QloAppsCustomerSyncService {
     const mappings = await db('qloapps_customer_mappings')
       .where({
         hotel_id: this.hotelId,
-        qloapps_hotel_id: this.hotelId.toString(),
+        qloapps_hotel_id: this.qloAppsHotelId.toString(),
       })
       .select('qloapps_customer_id', 'local_guest_id');
 
@@ -134,7 +134,7 @@ export class QloAppsCustomerSyncService {
       hotel_id: this.hotelId,
       local_guest_id: pmsGuestId,
       qloapps_customer_id: qloAppsCustomerId.toString(),
-      qloapps_hotel_id: this.hotelId.toString(),
+      qloapps_hotel_id: this.qloAppsHotelId.toString(),
       match_type: matchType === 'name' ? 'manual' : matchType === 'new' ? 'booking' : matchType,
       is_active: true,
       is_verified: matchType === 'email', // Auto-verify email matches
@@ -157,7 +157,7 @@ export class QloAppsCustomerSyncService {
       .where({
         hotel_id: this.hotelId,
         qloapps_customer_id: qloAppsCustomerId.toString(),
-        qloapps_hotel_id: this.hotelId.toString(),
+        qloapps_hotel_id: this.qloAppsHotelId.toString(),
       })
       .update({
         local_guest_id: pmsGuestId,

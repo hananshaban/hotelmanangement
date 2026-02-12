@@ -405,7 +405,7 @@ export async function getCheckInDetails(
       'room_types.name as room_type_name',
       'reserved_room.room_number as reserved_room_number',
       'pg.id as primary_guest_id',
-      query.raw('CONCAT(pg.first_name, \' \', pg.last_name) as primary_guest_name'),
+      'pg.name as primary_guest_name',
       'pg.email as primary_guest_email',
       'pg.phone as primary_guest_phone'
     )
@@ -543,7 +543,7 @@ export async function listCheckIns(
       'reservations.check_out as reservation_check_out',
       'reservations.status as reservation_status',
       'pg.id as primary_guest_id',
-      db.raw('CONCAT(pg.first_name, \' \', pg.last_name) as primary_guest_name'),
+      'pg.name as primary_guest_name',
       'pg.email as primary_guest_email',
       'pg.phone as primary_guest_phone'
     )

@@ -61,20 +61,20 @@ export class QloAppsPushSyncService {
   private client: QloAppsClient;
   private configId: string;
   private hotelId: string;
-  private hotelId: number;
+  private qloAppsHotelId: number;
   private currency: string;
 
   constructor(
     client: QloAppsClient, 
     configId: string, 
     hotelId: string,
-    hotelId: number,
+    qloAppsHotelId: number,
     currency?: string
   ) {
     this.client = client;
     this.configId = configId;
     this.hotelId = hotelId;
-    this.hotelId = hotelId;
+    this.qloAppsHotelId = qloAppsHotelId;
     // Use explicit currency if provided, otherwise fall back to env or USD
     const defaultCurrency = process.env.QLOAPPS_DEFAULT_CURRENCY ?? 'USD';
     this.currency = (currency ?? defaultCurrency).toUpperCase();
@@ -289,7 +289,7 @@ export class QloAppsPushSyncService {
 
     // Ensure id_property is set from QloApps config (hotelId)
     // This helps QloApps associate the booking with the correct property
-    (bookingRequest as QloAppsBookingCreateRequest).id_property = this.hotelId;
+    (bookingRequest as QloAppsBookingCreateRequest).id_property = this.qloAppsHotelId;
 
     // Log the outbound booking payload (trimmed if very large)
     try {

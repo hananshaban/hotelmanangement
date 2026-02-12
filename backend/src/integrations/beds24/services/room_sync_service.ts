@@ -185,17 +185,17 @@ export class RoomSyncService {
     
     // Get all PMS rooms that are already mapped
     const mappedRooms = await db('rooms')
-      .whereNotNull('beds24_room_id')
-      .select('beds24_room_id');
+      .whereNotNull('cm_room_id')
+      .select('cm_room_id');
 
     // Normalize and create a set of mapped Beds24 room IDs
     // Handle both string and number types, trim whitespace, and filter out empty values
     const mappedBeds24Ids = new Set(
       mappedRooms
         .map((r) => {
-          if (!r.beds24_room_id) return null;
+          if (!r.cm_room_id) return null;
           // Convert to string, trim whitespace, and normalize
-          const normalized = String(r.beds24_room_id).trim();
+          const normalized = String(r.cm_room_id).trim();
           return normalized || null;
         })
         .filter((id): id is string => id !== null)
@@ -220,7 +220,7 @@ export class RoomSyncService {
     try {
       // Check if Beds24 room is already mapped to another PMS room
       const existingMapping = await db('rooms')
-        .where({ beds24_room_id: beds24RoomId })
+        .where({ cm_room_id: beds24RoomId })
         .where('id', '!=', pmsRoomId)
         .first();
 
@@ -235,7 +235,7 @@ export class RoomSyncService {
       await db('rooms')
         .where({ id: pmsRoomId })
         .update({
-          beds24_room_id: beds24RoomId,
+          cm_room_id: beds24RoomId,
           updated_at: new Date(),
         });
 
@@ -255,7 +255,7 @@ export class RoomSyncService {
     await db('rooms')
       .where({ id: pmsRoomId })
       .update({
-        beds24_room_id: null,
+        cm_room_id: null,
         updated_at: new Date(),
       });
   }
@@ -357,7 +357,7 @@ export class RoomSyncService {
         const finalFloor = parseInt(String(floor)) || defaultFloor;
 
         // Check if room type already exists (by room_type, price, and floor)
-        // This is better than checking beds24_room_id since we group multiple rooms
+        // This is better than checking cm_room_id since we group multiple rooms
         const existingRoomType = await db('room_types')
           .where({ room_type: roomType })
           .where('price_per_night', '>=', finalPrice - 1)
@@ -456,7 +456,7 @@ export class RoomSyncService {
           features: db.raw('?::jsonb', [featuresJson]), // Use raw SQL for JSONB
           description: firstRoom.description || fullRoom.description || null,
           units: db.raw('?::jsonb', [unitsJson]), // Use raw SQL for JSONB
-          beds24_room_id: firstRoom.id.toString(), // Store first room's ID as reference
+          cm_room_id: firstRoom.id.toString(), // Store first room's ID as reference
           // Store all Beds24 room IDs in description or a separate field for tracking
           // Note: For now, we store the first room's ID. In the future, consider a mapping table.
         };

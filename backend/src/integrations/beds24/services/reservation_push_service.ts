@@ -104,7 +104,7 @@ export class ReservationPushService {
             syncedAt: new Date(),
           };
         }
-        beds24RoomId = room.beds24_room_id || null;
+        beds24RoomId = room.cm_room_id || null;
         entityType = 'room';
       } else if (reservation.room_type_id) {
         // New: Room type based reservation
@@ -124,11 +124,11 @@ export class ReservationPushService {
           };
         }
 
-        // Get beds24_room_id from room_type
-        beds24RoomId = roomType.beds24_room_id || null;
+        // Get cm_room_id from room_type (channel manager room ID)
+        beds24RoomId = roomType.cm_room_id || null;
 
-        // Note: If room_type doesn't have beds24_room_id, we cannot sync
-        // Room types must have beds24_room_id configured for Beds24 sync to work
+        // Note: If room_type doesn't have cm_room_id, we cannot sync
+        // Room types must have cm_room_id configured for Beds24 sync to work
 
         entityType = 'room_type';
       } else {
@@ -149,7 +149,7 @@ export class ReservationPushService {
           syncType: 'PUSH',
           entityType: 'reservation',
           entityId: reservationId,
-          error: `${entityType === 'room' ? 'Room' : 'Room type'} not mapped to Beds24. Please configure beds24_room_id.`,
+          error: `${entityType === 'room' ? 'Room' : 'Room type'} not mapped to Beds24. Please configure cm_room_id.`,
           syncedAt: new Date(),
         };
       }

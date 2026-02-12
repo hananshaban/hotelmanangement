@@ -165,13 +165,13 @@ export class PullSyncService {
         }
         console.log(`Guest ID: ${guestId}`);
 
-        // Find room type by beds24_room_id (preferred) or fallback to individual room
+        // Find room type by cm_room_id (preferred) or fallback to individual room
         let roomTypeId: string | null = null;
         let roomId: string | null = null;
 
-        // Try to find room type first (new Beds24-style)
+        // Try to find room type first (new CM-style)
         const roomType = await db('room_types')
-          .where({ beds24_room_id: booking.roomId.toString() })
+          .where({ cm_room_id: booking.roomId.toString() })
           .whereNull('deleted_at')
           .first();
 
@@ -181,7 +181,7 @@ export class PullSyncService {
         } else {
           // Fallback to individual room (legacy)
           const room = await db('rooms')
-            .where({ beds24_room_id: booking.roomId.toString() })
+            .where({ cm_room_id: booking.roomId.toString() })
             .first();
 
           if (!room) {

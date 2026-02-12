@@ -238,7 +238,7 @@ export async function updateHotelHandler(
     res.json(updatedHotel);
 
     // Audit log
-    logUpdate(req, 'hotel', id, existingHotel, updatedHotel)
+    logUpdate(req, 'hotel', id!, existingHotel, updatedHotel)
       .catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
     next(error);
@@ -283,7 +283,7 @@ export async function deleteHotelHandler(
     });
 
     // Audit log
-    logDelete(req, 'hotel', id, existingHotel)
+    logDelete(req, 'hotel', id!, existingHotel)
       .catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
     next(error);

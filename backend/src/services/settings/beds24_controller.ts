@@ -194,7 +194,7 @@ export async function authenticateBeds24Handler(
         ? 'Beds24 authentication successful. Initial sync started in background.'
         : 'Beds24 authentication successful',
       scopes: tokenDetails.scopes || [],
-      propertyIds: tokenDetails.propertyIds || [],
+      propertyIds: tokenDetails.hotelIds || [],
       initialSyncStarted: isFirstTimeSetup,
     });
   } catch (error) {
@@ -304,7 +304,7 @@ export async function testBeds24ConnectionHandler(
     res.json({
       success: true,
       scopes: tokenDetails.scopes || [],
-      propertyIds: tokenDetails.propertyIds || [],
+      propertyIds: tokenDetails.hotelIds || [],
       expiresIn: tokenDetails.expiresIn,
     });
   } catch (error) {

@@ -36,7 +36,7 @@ export interface RoomType {
   features: string[];
   description?: string | null;
   units: Beds24Unit[];
-  beds24_room_id?: string | null;
+  cm_room_id?: string | null;
   created_at: string;
   updated_at: string;
   deleted_at?: string | null;
@@ -72,7 +72,7 @@ export interface CreateRoomTypeRequest {
   features?: string[];
   description?: string;
   units?: Beds24Unit[];
-  beds24_room_id?: string;
+  cm_room_id?: string;
 }
 
 export interface UpdateRoomTypeRequest extends Partial<CreateRoomTypeRequest> {
