@@ -15,7 +15,7 @@ import type { Knex } from 'knex';
  * Note: Tables with property_id were already renamed in migration 1
  */
 
-const DEFAULT_HOTEL_ID = '00000000-0000-0000-0000-000000000001';
+const DEFAULT_HOTEL_ID = '00000000-0000-0000-0000-000000000000';
 
 // List of tables that need hotel_id added
 const TABLES_TO_UPDATE = [

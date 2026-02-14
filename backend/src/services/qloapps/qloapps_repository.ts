@@ -9,7 +9,7 @@ import db from '../../config/database.js';
 import { encrypt, decrypt } from '../../utils/encryption.js';
 
 // Default hotel ID for single-hotel installations
-const HOTEL_ID = '00000000-0000-0000-0000-000000000001';
+const HOTEL_ID = '00000000-0000-0000-0000-000000000000';
 
 // =============================================================================
 // Configuration Types

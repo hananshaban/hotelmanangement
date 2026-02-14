@@ -24,7 +24,7 @@ class ChannelManagerService {
   private static instance: ChannelManagerService;
   private qloAppsStrategy: QloAppsChannelStrategy;
   private activeChannelManager: ChannelManagerName = 'qloapps'; // Default to QloApps
-  private propertyId = '00000000-0000-0000-0000-000000000001';
+  private propertyId = '00000000-0000-0000-0000-000000000000';
   private initialized = false;
 
   private constructor() {

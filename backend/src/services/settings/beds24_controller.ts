@@ -4,7 +4,7 @@ import { InitialSyncService } from '../../integrations/beds24/services/initial_s
 import db from '../../config/database.js';
 import { encrypt, decrypt } from '../../utils/encryption.js';
 
-const PROPERTY_ID = '00000000-0000-0000-0000-000000000001';
+const PROPERTY_ID = '00000000-0000-0000-0000-000000000000';
 
 /**
  * Get Beds24 configuration

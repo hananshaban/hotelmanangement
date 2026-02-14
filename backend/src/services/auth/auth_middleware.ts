@@ -61,7 +61,7 @@ export function requireRole(...allowedRoles: string[]) {
 
 // Default hotel ID for backward compatibility (Phase 1)
 // TODO: Remove this default in Phase 3 when frontend sends X-Hotel-Id header
-const DEFAULT_HOTEL_ID = '00000000-0000-0000-0000-000000000001';
+const DEFAULT_HOTEL_ID = '00000000-0000-0000-0000-000000000000';
 
 /**
  * Hotel Context Middleware

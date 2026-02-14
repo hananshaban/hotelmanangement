@@ -127,7 +127,7 @@ npm run migrate:status
 
 The migrations are designed to be **backward compatible**:
 - ✅ Existing data is preserved
-- ✅ All data assigned to default hotel (ID: `00000000-0000-0000-0000-000000000001`)
+- ✅ All data assigned to default hotel (ID: `00000000-0000-0000-0000-000000000000`)
 - ✅ All users assigned to default hotel
 - ✅ Full rollback support via `down()` functions
 
@@ -163,8 +163,8 @@ See [multi-hotel_rbac_redesign_add9ab96.plan.md](../multi-hotel_rbac_redesign_ad
 
 ```typescript
 // Default hotel ID used throughout the system
-const DEFAULT_HOTEL_ID = '00000000-0000-0000-0000-000000000001';
-const HOTEL_ID = '00000000-0000-0000-0000-000000000001';
+const DEFAULT_HOTEL_ID = '00000000-0000-0000-0000-000000000000';
+const HOTEL_ID = '00000000-0000-0000-0000-000000000000';
 ```
 
 ## Files Changed
@@ -210,7 +210,7 @@ npm run migrate:status
 1. **SUPER_ADMIN access**: SUPER_ADMIN users have implicit access to all hotels (no user_hotels entries required)
 2. **Hotel-scoped uniqueness**: room_number is now unique per hotel (not globally)
 3. **Soft delete**: Hotels use soft delete (deleted_at column)
-4. **Default hotel**: All existing data is assigned to hotel ID `00000000-0000-0000-0000-000000000001`
+4. **Default hotel**: All existing data is assigned to hotel ID `00000000-0000-0000-0000-000000000000`
 
 ## Support
 

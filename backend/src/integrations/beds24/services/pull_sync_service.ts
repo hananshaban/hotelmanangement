@@ -410,7 +410,7 @@ export class PullSyncService {
    * Load Beds24 configuration
    */
   private async loadBeds24Config() {
-    const hotelId = '00000000-0000-0000-0000-000000000001';
+    const hotelId = '00000000-0000-0000-0000-000000000000';
     const config = await db('beds24_config')
       .where({ hotel_id: hotelId })
       .first();

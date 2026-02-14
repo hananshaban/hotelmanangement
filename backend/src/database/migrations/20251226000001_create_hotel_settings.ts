@@ -5,7 +5,7 @@ export async function up(knex: Knex): Promise<void> {
     table
       .uuid('id')
       .primary()
-      .defaultTo(knex.raw("'00000000-0000-0000-0000-000000000001'::uuid"));
+      .defaultTo(knex.raw("'00000000-0000-0000-0000-000000000000'::uuid"));
     table.string('hotel_name', 255).notNullable();
     table.text('address');
     table.string('city', 100);

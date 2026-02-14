@@ -107,7 +107,7 @@ async function main() {
   // Test 4: Database Operations
   console.log('\n💾 Test 4: Database Operations');
   try {
-    const propertyId = '00000000-0000-0000-0000-000000000001';
+    const propertyId = '00000000-0000-0000-0000-000000000000';
     const testToken = encrypt('test-refresh-token');
 
     // Insert test config

@@ -13,7 +13,7 @@ export async function up(knex: Knex): Promise<void> {
     table
       .uuid('property_id')
       .notNullable()
-      .defaultTo(knex.raw("'00000000-0000-0000-0000-000000000001'::uuid"))
+      .defaultTo(knex.raw("'00000000-0000-0000-0000-000000000000'::uuid"))
       .references('id')
       .inTable('hotel_settings')
       .onDelete('CASCADE');
@@ -67,7 +67,7 @@ export async function up(knex: Knex): Promise<void> {
   `);
 
   // Migrate existing rooms.beds24_room_id data to channel_mappings
-  const propertyId = '00000000-0000-0000-0000-000000000001';
+  const propertyId = '00000000-0000-0000-0000-000000000000';
   
   // Check if rooms table exists and has beds24_room_id column
   const hasBeds24RoomId = await knex.schema.hasColumn('rooms', 'beds24_room_id');

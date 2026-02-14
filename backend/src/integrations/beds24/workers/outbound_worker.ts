@@ -16,7 +16,7 @@ import db from '../../../config/database.js';
 import { decrypt } from '../../../utils/encryption.js';
 import dotenv from 'dotenv';
 
-const PROPERTY_ID = '00000000-0000-0000-0000-000000000001';
+const PROPERTY_ID = '00000000-0000-0000-0000-000000000000';
 
 dotenv.config();
 

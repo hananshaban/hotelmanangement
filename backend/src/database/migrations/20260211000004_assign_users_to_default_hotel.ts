@@ -14,7 +14,7 @@ import type { Knex } from 'knex';
  * but we assign them anyway for consistency and explicit tracking.
  */
 
-const DEFAULT_HOTEL_ID = '00000000-0000-0000-0000-000000000001';
+const DEFAULT_HOTEL_ID = '00000000-0000-0000-0000-000000000000';
 
 export async function up(knex: Knex): Promise<void> {
   console.log('Assigning all existing users to default hotel...');

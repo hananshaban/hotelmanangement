@@ -14,7 +14,7 @@ export async function runPullSyncJob(): Promise<{
 }> {
   try {
     // Load Beds24 config
-    const hotelId = '00000000-0000-0000-0000-000000000001';
+    const hotelId = '00000000-0000-0000-0000-000000000000';
     const config = await db('beds24_config')
       .where({ hotel_id: hotelId })
       .first();
@@ -92,7 +92,7 @@ export async function runFullSyncJob(): Promise<{
   error?: string;
 }> {
   try {
-    const hotelId = '00000000-0000-0000-0000-000000000001';
+    const hotelId = '00000000-0000-0000-0000-000000000000';
     const config = await db('beds24_config')
       .where({ hotel_id: hotelId })
       .first();

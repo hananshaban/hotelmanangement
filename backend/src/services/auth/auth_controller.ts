@@ -94,7 +94,7 @@ export async function loginHandler(
 
     // Auto-assign to default hotel if user has no hotels (Phase 1 backward compatibility)
     if (hotels.length === 0 && user.role !== 'SUPER_ADMIN') {
-      const DEFAULT_HOTEL_ID = '00000000-0000-0000-0000-000000000001';
+      const DEFAULT_HOTEL_ID = '00000000-0000-0000-0000-000000000000';
       
       // Check if default hotel exists
       const defaultHotel = await db('hotels')

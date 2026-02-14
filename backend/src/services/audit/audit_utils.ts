@@ -4,7 +4,7 @@ import type { CreateAuditLogRequest } from './audit_types.js';
 
 // Default hotel ID for single-hotel installations (Phase 1)
 // TODO: In Phase 2, this will be replaced by hotelContext middleware
-const DEFAULT_HOTEL_ID = '00000000-0000-0000-0000-000000000001';
+const DEFAULT_HOTEL_ID = '00000000-0000-0000-0000-000000000000';
 
 /**
  * Create an audit log entry

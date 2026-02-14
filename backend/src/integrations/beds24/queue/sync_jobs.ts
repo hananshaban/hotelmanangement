@@ -41,7 +41,7 @@ export type SyncJobData = SyncReservationJobData | SyncAvailabilityJobData | Syn
  */
 export async function processSyncJob(jobData: SyncJobData): Promise<SyncResult> {
   // Load Beds24 config
-  const hotelId = '00000000-0000-0000-0000-000000000001';
+  const hotelId = '00000000-0000-0000-0000-000000000000';
   const config = await db('beds24_config')
     .where({ hotel_id: hotelId })
     .first();

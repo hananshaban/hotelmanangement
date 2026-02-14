@@ -12,7 +12,7 @@ export async function up(knex: Knex): Promise<void> {
     table
       .uuid('property_id')
       .notNullable()
-      .defaultTo(knex.raw("'00000000-0000-0000-0000-000000000001'::uuid"))
+      .defaultTo(knex.raw("'00000000-0000-0000-0000-000000000000'::uuid"))
       .references('id')
       .inTable('hotel_settings')
       .onDelete('CASCADE');

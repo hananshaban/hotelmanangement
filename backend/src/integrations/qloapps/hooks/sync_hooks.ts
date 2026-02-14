@@ -135,7 +135,7 @@ async function getQloAppsConfigId(hotelId: string): Promise<string | null> {
  * Get default property ID (for single-property installations)
  */
 function getDefaultPropertyId(): string {
-  return '00000000-0000-0000-0000-000000000001';
+  return '00000000-0000-0000-0000-000000000000';
 }
 
 /**

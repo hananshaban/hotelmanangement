@@ -16,7 +16,7 @@ import db from '../../../config/database.js';
  * Check if Beds24 sync is enabled
  */
 async function isSyncEnabled(): Promise<boolean> {
-  const hotelId = '00000000-0000-0000-0000-000000000001';
+  const hotelId = '00000000-0000-0000-0000-000000000000';
   const config = await db('beds24_config')
     .where({ hotel_id: hotelId })
     .first();

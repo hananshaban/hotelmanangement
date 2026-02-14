@@ -630,3 +630,4 @@ Check-in operations automatically sync with connected channel managers (QloApps,
 - Room assignment history tracking
 
 
+

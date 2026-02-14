@@ -26,7 +26,7 @@ null value in column "hotel_id" of relation "audit_logs" violates not-null const
 **Code Changes:**
 ```typescript
 // audit_utils.ts
-const DEFAULT_HOTEL_ID = '00000000-0000-0000-0000-000000000001';
+const DEFAULT_HOTEL_ID = '00000000-0000-0000-0000-000000000000';
 
 export async function createAuditLog(logData: CreateAuditLogRequest): Promise<void> {
   await db('audit_logs').insert({
@@ -64,7 +64,7 @@ Error: X-Hotel-Id header is required
 **Code Changes:**
 ```typescript
 // auth_middleware.ts
-const DEFAULT_HOTEL_ID = '00000000-0000-0000-0000-000000000001';
+const DEFAULT_HOTEL_ID = '00000000-0000-0000-0000-000000000000';
 
 export async function hotelContext(req, res, next) {
   // Extract hotel ID from header or use default
@@ -97,7 +97,7 @@ export async function hotelContext(req, res, next) {
 **Seed Data:**
 ```typescript
 {
-  id: '00000000-0000-0000-0000-000000000001',
+  id: '00000000-0000-0000-0000-000000000000',
   hotel_name: 'Default Hotel',
   address: '123 Main Street',
   city: 'New York',
@@ -172,7 +172,7 @@ The backend should now:
 
 **Phase 1 Compatibility Mode:**
 - ✅ Works without frontend changes
-- ✅ All requests default to hotel ID `00000000-0000-0000-0000-000000000001`
+- ✅ All requests default to hotel ID `00000000-0000-0000-0000-000000000000`
 - ✅ Audit logs include `hotel_id`
 - ⚠️ Warning logged when `X-Hotel-Id` header is missing
 
@@ -188,7 +188,7 @@ The backend should now:
 ### Default Hotel ID
 This constant is used throughout the system:
 ```typescript
-const DEFAULT_HOTEL_ID = '00000000-0000-0000-0000-000000000001';
+const DEFAULT_HOTEL_ID = '00000000-0000-0000-0000-000000000000';
 ```
 
 ### Temporary Fallback Logic

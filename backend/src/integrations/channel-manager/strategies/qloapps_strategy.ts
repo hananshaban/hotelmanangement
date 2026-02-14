@@ -24,7 +24,7 @@ import {
 } from '../../qloapps/hooks/sync_hooks.js';
 
 export class QloAppsChannelStrategy implements IChannelManagerStrategy {
-  private hotelId = '00000000-0000-0000-0000-000000000001';
+  private hotelId = '00000000-0000-0000-0000-000000000000';
 
   getName(): ChannelManagerName {
     return 'qloapps';

@@ -55,7 +55,7 @@ export interface FailedEventFilters {
   offset?: number;
 }
 
-const DEFAULT_PROPERTY_ID = '00000000-0000-0000-0000-000000000001';
+const DEFAULT_PROPERTY_ID = '00000000-0000-0000-0000-000000000000';
 const DEFAULT_MAX_ATTEMPTS = 3;
 
 /**

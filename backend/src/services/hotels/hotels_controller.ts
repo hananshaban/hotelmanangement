@@ -6,6 +6,15 @@ import type { CreateHotelRequest, UpdateHotelRequest, HotelResponse } from './ho
 import { logCreate, logUpdate, logDelete } from '../audit/audit_utils.js';
 
 /**
+ * Helper function to check if user is SUPER_ADMIN
+ * Handles potential string variations and whitespace issues
+ */
+function isSuperAdmin(user: any): boolean {
+  const role = user?.role?.trim().toUpperCase();
+  return role === 'SUPER_ADMIN' || role === 'SUPER ADMIN' || role === 'SUPERADMIN';
+}
+
+/**
  * Get all hotels accessible to the current user
  * 
  * SUPER_ADMIN: sees all hotels
@@ -24,25 +33,47 @@ export async function getHotelsHandler(
       return;
     }
 
-    let hotels;
+    // 🔍 DEBUG: Log user details
+    console.log('[getHotelsHandler] Request from user:', {
+      userId: user.userId,
+      email: user.email,
+      role: user.role,
+      roleType: typeof user.role,
+      roleLength: user.role?.length,
+      roleBytes: Buffer.from(user.role || '').toString('hex'),
+    });
 
-    if (user.role === 'SUPER_ADMIN') {
-      // SUPER_ADMIN sees all hotels
+    let hotels;
+    const superAdmin = isSuperAdmin(user);
+
+    console.log('[getHotelsHandler] Is SUPER_ADMIN?', superAdmin);
+
+    if (superAdmin) {
+      console.log('[getHotelsHandler] Querying ALL hotels (SUPER_ADMIN)');
       hotels = await db('hotels')
         .whereNull('deleted_at')
         .orderBy('hotel_name', 'asc');
+      console.log(`[getHotelsHandler] Found ${hotels.length} hotels:`, 
+        hotels.map(h => ({ id: h.id, name: h.hotel_name }))
+      );
     } else {
-      // Other users see only assigned hotels
+      console.log(`[getHotelsHandler] Querying ASSIGNED hotels (role: ${user.role})`);
       hotels = await db('hotels')
         .join('user_hotels', 'hotels.id', 'user_hotels.hotel_id')
         .where('user_hotels.user_id', user.userId)
         .whereNull('hotels.deleted_at')
         .select('hotels.*')
         .orderBy('hotels.hotel_name', 'asc');
+      console.log(`[getHotelsHandler] Found ${hotels.length} assigned hotels:`,
+        hotels.map(h => ({ id: h.id, name: h.hotel_name }))
+      );
     }
 
-    res.json(hotels);
+    // Exclude deleted_at from response
+    const hotelsResponse = hotels.map(({ deleted_at, ...hotel }) => hotel);
+    res.json(hotelsResponse);
   } catch (error) {
+    console.error('[getHotelsHandler] Error:', error);
     next(error);
   }
 }
@@ -77,7 +108,7 @@ export async function getHotelHandler(
     }
 
     // Check access
-    if (user.role !== 'SUPER_ADMIN') {
+    if (!isSuperAdmin(user)) {
       const userHotel = await db('user_hotels')
         .where({
           user_id: user.userId,
@@ -93,7 +124,9 @@ export async function getHotelHandler(
       }
     }
 
-    res.json(hotel);
+    // Exclude deleted_at from response
+    const { deleted_at, ...hotelResponse } = hotel;
+    res.json(hotelResponse);
   } catch (error) {
     next(error);
   }
@@ -111,6 +144,13 @@ export async function createHotelHandler(
 ) {
   try {
     const data = req.body as CreateHotelRequest;
+    const user = req.user;
+
+    console.log('[createHotelHandler] Creating hotel:', {
+      userId: user?.userId,
+      userRole: user?.role,
+      hotelName: data.hotel_name,
+    });
 
     // Validation
     if (!data.hotel_name) {
@@ -145,13 +185,22 @@ export async function createHotelHandler(
       .insert(hotelData)
       .returning('*');
 
-    res.status(201).json(hotel);
+    console.log('[createHotelHandler] Hotel created successfully:', {
+      id: hotel.id,
+      name: hotel.hotel_name,
+      deleted_at: hotel.deleted_at,
+    });
+
+    // Exclude deleted_at from response
+    const { deleted_at, ...hotelResponse } = hotel;
+    res.status(201).json(hotelResponse);
 
     // Audit log
     logCreate(req, 'hotel', hotel.id, {
       hotel_name: hotel.hotel_name,
     }).catch((err) => console.error('Audit log failed:', err));
   } catch (error) {
+    console.error('[createHotelHandler] Error:', error);
     next(error);
   }
 }
@@ -189,7 +238,7 @@ export async function updateHotelHandler(
     }
 
     // Check access
-    if (user.role !== 'SUPER_ADMIN') {
+    if (!isSuperAdmin(user)) {
       const userHotel = await db('user_hotels')
         .where({
           user_id: user.userId,
@@ -235,7 +284,9 @@ export async function updateHotelHandler(
       .update(updateData)
       .returning('*');
 
-    res.json(updatedHotel);
+    // Exclude deleted_at from response
+    const { deleted_at, ...hotelResponse } = updatedHotel;
+    res.json(hotelResponse);
 
     // Audit log
     logUpdate(req, 'hotel', id!, existingHotel, updatedHotel)

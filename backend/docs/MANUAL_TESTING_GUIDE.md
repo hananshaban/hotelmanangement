@@ -157,7 +157,7 @@ rabbitmqctl list_queues
 
 **1. Get webhook secret:**
 ```sql
-SELECT webhook_secret FROM beds24_config WHERE property_id = '00000000-0000-0000-0000-000000000001';
+SELECT webhook_secret FROM beds24_config WHERE property_id = '00000000-0000-0000-0000-000000000000';
 ```
 
 **2. Generate HMAC signature:**
