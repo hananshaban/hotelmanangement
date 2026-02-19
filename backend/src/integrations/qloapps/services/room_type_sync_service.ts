@@ -254,7 +254,7 @@ export class QloAppsRoomTypeSyncService {
         hotel_id: this.hotelId,
         local_room_type_id: pmsRoomTypeId,
         qloapps_product_id: qloAppsRoomTypeId.toString(),
-        qloapps_hotel_id: this.hotelId.toString(),
+        qloapps_hotel_id: this.qloAppsHotelId.toString(),
         is_active: true,
         sync_direction: 'bidirectional',
         last_synced_at: new Date(),
@@ -371,6 +371,16 @@ export class QloAppsRoomTypeSyncService {
     let skippedCount = 0;
     let failedCount = 0;
 
+    // Insert a sync-state row with the correct schema columns
+    const [syncStateRow] = await db('qloapps_sync_state')
+      .insert({
+        hotel_id: this.hotelId,
+        sync_type: QLOAPPS_CONFIG.SYNC_TYPES.ROOM_TYPES_PULL,
+        status: 'running',
+        started_at: startedAt,
+      })
+      .returning(['id']);
+
     try {
       // If auto-create mappings is enabled, generate and apply proposals
       if (options.autoCreateMappings) {
@@ -436,10 +446,20 @@ export class QloAppsRoomTypeSyncService {
         processedCount++;
       }
 
-      // Update sync state
-      await this.updateSyncState('room_types', true);
+      const completedAt = new Date();
 
-      // Log sync results
+      // Mark sync state as completed with correct schema columns
+      await db('qloapps_sync_state')
+        .where({ id: syncStateRow.id })
+        .update({
+          status: 'completed',
+          completed_at: completedAt,
+          last_successful_sync: completedAt,
+          room_types_processed: processedCount,
+          room_types_synced: createdCount + updatedCount,
+        });
+
+      // Log the batch result with correct schema columns
       await this.logSyncResult({
         syncType: QLOAPPS_CONFIG.SYNC_TYPES.ROOM_TYPES_PULL,
         success: failedCount === 0,
@@ -450,14 +470,20 @@ export class QloAppsRoomTypeSyncService {
         failedCount,
         errors,
         startedAt,
-        completedAt: new Date(),
+        completedAt,
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       errors.push(errorMessage);
       failedCount++;
 
-      await this.updateSyncState('room_types', false, errorMessage);
+      await db('qloapps_sync_state')
+        .where({ id: syncStateRow.id })
+        .update({
+          status: 'failed',
+          completed_at: new Date(),
+          error_message: errorMessage,
+        });
     }
 
     const completedAt = new Date();
@@ -478,43 +504,16 @@ export class QloAppsRoomTypeSyncService {
   }
 
   /**
-   * Update sync state in database
-   */
-  private async updateSyncState(
-    entityType: string,
-    success: boolean,
-    errorMessage?: string
-  ): Promise<void> {
-    const existing = await db('qloapps_sync_state')
-      .where({
-        hotel_id: this.hotelId,
-        entity_type: entityType,
-      })
-      .first();
-
-    const now = new Date();
-    const updates = {
-      last_successful_sync: success ? now : undefined,
-      last_sync_success: success,
-      last_sync_error: success ? null : errorMessage,
-      updated_at: now,
-    };
-
-    if (existing) {
-      await db('qloapps_sync_state')
-        .where({ id: existing.id })
-        .update(updates);
-    } else {
-      await db('qloapps_sync_state').insert({
-        hotel_id: this.hotelId,
-        entity_type: entityType,
-        ...updates,
-      });
-    }
-  }
-
-  /**
-   * Log sync result to database
+   * Log a batch-level sync result to qloapps_sync_logs using the correct schema columns.
+   *
+   * Column mapping vs the old broken version:
+   *  - direction: 'inbound' (was 'pull' — violates check constraint)
+   *  - operation: 'fetch'   (required NOT NULL — was missing)
+   *  - entity_type: 'room_type' (required NOT NULL — was missing)
+   *  - started_at           (required NOT NULL — was missing)
+   *  - error_message        (was 'error_details' — column does not exist)
+   *  - metadata             (stores aggregated counts; schema has no records_* columns)
+   *  - removed: sync_type, records_processed/created/updated/failed (columns do not exist)
    */
   private async logSyncResult(result: {
     syncType: string;
@@ -530,16 +529,22 @@ export class QloAppsRoomTypeSyncService {
   }): Promise<void> {
     await db('qloapps_sync_logs').insert({
       hotel_id: this.hotelId,
-      sync_type: result.syncType,
-      direction: 'pull',
+      operation: 'fetch',
+      entity_type: 'room_type',
+      direction: 'inbound',
       status: result.success ? 'success' : 'failed',
       started_at: result.startedAt,
       completed_at: result.completedAt,
-      records_processed: result.processedCount,
-      records_created: result.createdCount,
-      records_updated: result.updatedCount,
-      records_failed: result.failedCount,
-      error_details: result.errors.length > 0 ? JSON.stringify(result.errors) : null,
+      duration_ms: result.completedAt.getTime() - result.startedAt.getTime(),
+      error_message: result.errors.length > 0 ? result.errors.slice(0, 5).join('; ') : null,
+      metadata: JSON.stringify({
+        sync_type: result.syncType,
+        records_processed: result.processedCount,
+        records_created: result.createdCount,
+        records_updated: result.updatedCount,
+        records_skipped: result.skippedCount,
+        records_failed: result.failedCount,
+      }),
     });
   }
 }

@@ -195,7 +195,7 @@ export async function queueQloAppsReservationSyncHook(
       return;
     }
 
-    // Skip if reservation source is QloApps (already synced from there)
+    // Verify the reservation still exists
     const reservation = await db('reservations')
       .where({ id: reservationId })
       .whereNull('deleted_at')
@@ -208,7 +208,18 @@ export async function queueQloAppsReservationSyncHook(
       return;
     }
 
-    if (reservation.source === 'QloApps') {
+    // Skip if the reservation originated from QloApps (source='qloapps' in mapping table).
+    // Checking the mapping table is more reliable than reservation.source because it is set
+    // at insert time by the pull sync service and is never overwritten.
+    const qloAppsMapping = await db('qloapps_reservation_mappings')
+      .where({
+        hotel_id: hotelId,
+        local_reservation_id: reservationId,
+        source: 'qloapps',
+      })
+      .first();
+
+    if (qloAppsMapping) {
       console.log(
         `[QloApps SyncHook] Skipping sync for QloApps-originated reservation ${reservationId}`
       );
@@ -297,8 +308,7 @@ export async function queueQloAppsAvailabilitySyncHook(
 
     // Check if room type is mapped to QloApps
     const mapping = await db('qloapps_room_type_mappings')
-      .where({ local_room_type_id: roomTypeId })
-      .whereNull('deleted_at')
+      .where({ local_room_type_id: roomTypeId, is_active: true })
       .first();
 
     if (!mapping) {
@@ -566,7 +576,6 @@ export async function queueQloAppsGuestSyncHook(
 async function getCheckInPropertyId(checkInId: string): Promise<string | null> {
   const checkIn = await db('check_ins')
     .where({ id: checkInId })
-    .whereNull('deleted_at')
     .first();
 
   if (!checkIn?.reservation_id) {
@@ -591,7 +600,6 @@ export async function queueQloAppsCheckInSyncHook(
     // Get reservation ID from check-in
     const checkIn = await db('check_ins')
       .where({ id: checkInId })
-      .whereNull('deleted_at')
       .first();
 
     if (!checkIn || !checkIn.reservation_id) {
@@ -633,7 +641,16 @@ export async function queueQloAppsCheckInSyncHook(
       return;
     }
 
-    if (reservation.source === 'QloApps') {
+    // Skip if the reservation originated from QloApps (same logic as in queueQloAppsReservationSyncHook)
+    const qloAppsMappingCheckin = await db('qloapps_reservation_mappings')
+      .where({
+        hotel_id: hotelId,
+        local_reservation_id: reservationId,
+        source: 'qloapps',
+      })
+      .first();
+
+    if (qloAppsMappingCheckin) {
       console.log(
         `[QloApps SyncHook] Skipping sync for QloApps-originated reservation ${reservationId} (check-in: ${action})`
       );

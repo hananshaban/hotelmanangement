@@ -64,6 +64,153 @@ A comprehensive Property Management System (PMS) designed to streamline hotel op
 
 7. **Access the API at** `http://localhost:3000`
 
+## Running the Full System with Docker
+
+To run the **full integration environment** – backend PMS (API + workers), infrastructure (**PostgreSQL + RabbitMQ**), and the external **QloApps PMS** (via official Docker image) – use Docker and Docker Compose.
+
+For more Docker details, see [`DOCKER.md`](./DOCKER.md). The summary below focuses on the “everything running together” path.
+
+### 1. Prerequisites
+
+- Docker and Docker Compose installed
+- Port availability:
+  - `3000` for the backend API
+  - `5432` for PostgreSQL
+  - `5672` and `15672` for RabbitMQ
+  - `80` / `3306` / `2222` (or alternates) for the QloApps container
+
+### 2. Backend environment for Docker
+
+In the `backend/` directory:
+
+1. **Create a Docker env file** (based on `.env.docker`):
+
+   ```bash
+   cd backend
+   cp .env.docker .env
+   ```
+
+2. **Adjust key variables** in `.env` as needed (DB, RabbitMQ, JWT, QloApps/Beds24 keys, etc.).  
+   The Docker compose file already defaults `DB_HOST=postgres` and `RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672`.
+
+### 3. Start infrastructure (PostgreSQL + RabbitMQ)
+
+From `backend/`:
+
+```bash
+docker compose --profile infra up -d postgres rabbitmq
+```
+
+This will start:
+
+- `postgres` on port `5432`
+- `rabbitmq` on ports `5672` (AMQP) and `15672` (management UI)
+
+You can verify with:
+
+```bash
+docker compose ps
+```
+
+### 4. Run database migrations and seeds (inside Docker)
+
+With infra running:
+
+```bash
+# Run migrations
+docker compose --profile infra --profile tools run --rm migrate
+
+# Run seeds (optional but recommended for initial data)
+docker compose --profile infra --profile tools run --rm seed
+```
+
+These commands use the `migrate` and `seed` services defined in `docker-compose.yml` and connect to the `postgres` container.
+
+### 5. Start backend API and workers (PMS side)
+
+To run the API plus all QloApps workers:
+
+```bash
+docker compose \
+  --profile infra \
+  --profile workers \
+  up -d api worker-inbound worker-outbound worker-scheduler
+```
+
+What you get:
+
+- `api` at `http://localhost:3000`
+- `worker-inbound`, `worker-outbound`, `worker-scheduler` connected to RabbitMQ and PostgreSQL
+
+Logs:
+
+```bash
+docker compose logs -f api
+docker compose logs -f worker-inbound
+docker compose logs -f worker-outbound
+docker compose logs -f worker-scheduler
+```
+
+### 6. Run QloApps PMS via official Docker image
+
+To start a standalone QloApps PMS instance (used by this backend as an external channel/PMS), use the official Docker image from Webkul [`webkul/qloapps_docker`](https://hub.docker.com/r/webkul/qloapps_docker):
+
+1. **Pull the image**:
+
+   ```bash
+   docker pull webkul/qloapps_docker:latest
+   ```
+
+2. **Run the container** (adjust passwords and DB name):
+
+   ```bash
+   docker run -tid \
+     -p 80:80 \
+     -p 3306:3306 \
+     -p 2222:22 \
+     --name qloapps \
+     -e USER_PASSWORD=qloappsuserpassword \
+     -e MYSQL_ROOT_PASSWORD=myrootpassword \
+     -e MYSQL_DATABASE=qlo170 \
+     webkul/qloapps_docker:latest
+   ```
+
+   - Port `80` → QloApps web UI
+   - Port `3306` → MySQL in the QloApps container
+   - Port `2222` → SSH access to the container
+
+   For more details and version‑specific notes, see the Docker Hub docs: [`webkul/qloapps_docker`](https://hub.docker.com/r/webkul/qloapps_docker).
+
+3. **Complete QloApps installation** in the browser:
+
+   - Open `http://localhost/` (or your server IP) and follow the QloApps installer.
+   - For v1.7.0, when asked for the MySQL host, use `127.0.0.1` (per the Docker Hub instructions).
+   - After installation, remove the `/install` directory inside the container:
+
+     ```bash
+     docker exec -i qloapps rm -rf /home/qloapps/www/QloApps/install
+     ```
+
+4. **Configure QloApps integration in this PMS**:
+
+   - Create a QloApps WebService API key inside QloApps.
+   - In this backend, set `QLO_API_URL` and `QLO_API_KEY` in `.env` so the API and workers can talk to QloApps.
+   - Use the admin UI / API endpoints to configure `qloapps_config` (base URL, API key, QloApps hotel ID).
+
+### 7. Run the frontend (PMS UI)
+
+The frontend currently runs as a Vite dev server (not yet containerized). In a second terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+By default, the frontend will be available at `http://localhost:5173` and should be configured to talk to the backend API at `http://localhost:3000`.
+
+> Note: Backend services (API + workers), infrastructure (PostgreSQL + RabbitMQ), and QloApps PMS are all running in Docker. The frontend runs via Vite on the host; you can add a small Dockerfile/frontend compose service later if you want a fully containerized UI as well.
+
 ## Available Scripts
 
 ### Development

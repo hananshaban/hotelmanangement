@@ -12,4 +12,5 @@ COPY . .
 EXPOSE 3000
 
 # Default command (can be overridden in docker-compose)
-CMD ["npm", "run", "dev"]
+# For Docker Compose setups, run database migrations once before starting the dev server.
+CMD ["sh", "-c", "npm run db:migrate && npm run db:seed && npm run dev"]

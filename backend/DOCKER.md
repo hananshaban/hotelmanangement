@@ -112,7 +112,12 @@ docker compose --profile infra --profile workers up -d worker-inbound worker-out
 
 ### Run Migrations
 
-With infrastructure running:
+The `api` service is configured to run database migrations automatically on startup
+inside the container (via `npm run db:migrate && npm run dev`). This means that for a
+typical `docker compose up` workflow you **do not need** to run migrations manually.
+
+If you prefer (or need) to run migrations manually, you can still use the tools
+profile with infrastructure running:
 
 ```bash
 docker compose --profile infra --profile tools run migrate
@@ -125,6 +130,9 @@ docker compose --profile tools run migrate
 ```
 
 ### Run Seeds
+
+Migrations are handled automatically by the `api` container, but **seeds are not**.
+To seed the database, run:
 
 ```bash
 docker compose --profile infra --profile tools run seed

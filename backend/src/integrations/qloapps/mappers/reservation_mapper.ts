@@ -105,32 +105,31 @@ export function mapPmsPaymentStatusToQloApps(paymentStatus: string): QloAppsPaym
 
 /**
  * Map QloApps booking source to PMS source
+ *
+ * Any booking pulled from the QloApps API is considered QloApps-originated and stored
+ * with source='QloApps' so the outbound sync hooks can skip pushing it back (preventing
+ * an infinite loop). 'QloApps' was added to the check_reservations_source constraint via
+ * migration 20260220000002.
  */
 export function mapQloAppsSourceToPms(source?: string, channel?: string): string {
-  // If source indicates OTA, use channel name if available
+  // OTA bookings routed through QloApps — preserve the OTA channel where known
   if (source === 'ota' || source === 'channel') {
     if (channel) {
-      // Normalize channel names
       const channelLower = channel.toLowerCase();
       if (channelLower.includes('booking')) return 'Booking.com';
       if (channelLower.includes('expedia')) return 'Expedia';
-      // For other channels not in the constraint, use 'Other'
-      if (channelLower.includes('airbnb')) return 'Other';
-      if (channelLower.includes('agoda')) return 'Other';
-      // Default OTA to 'Other' for unknown channels
-      return 'Other';
     }
-    return 'Other'; // OTA without specific channel
+    // Unknown OTA channel still came from QloApps; mark as QloApps so it is not pushed back
+    return 'QloApps';
   }
 
-  // Direct bookings
+  // Bookings made directly on the QloApps front-end/website
   if (source === 'website' || source === 'webservice' || source === 'direct') {
     return 'Direct';
   }
 
-  // Default to 'Other' for QloApps bookings
-  // Database constraint only allows: 'Direct', 'Beds24', 'Booking.com', 'Expedia', 'Other'
-  return 'Other';
+  // Any other source (admin-created, unknown) is treated as QloApps-native
+  return 'QloApps';
 }
 
 /**

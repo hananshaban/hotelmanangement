@@ -529,7 +529,7 @@ export class QloAppsPullSyncService {
       hotel_id: this.hotelId,
       local_reservation_id: reservation.id,
       qloapps_order_id: booking.id.toString(),
-      qloapps_hotel_id: this.hotelId.toString(),
+      qloapps_hotel_id: this.qloAppsHotelId.toString(),
       source: 'qloapps',
       last_synced_at: new Date(),
       last_sync_status: 'success',
@@ -638,20 +638,32 @@ export class QloAppsPullSyncService {
     let skippedCount = 0;
     let failedCount = 0;
 
+    // Create a sync-state row before processing so we can update it on success/failure.
+    // Columns match the actual schema (sync_type, status, started_at — NOT entity_type/updated_at).
+    const [syncStateRow] = await db('qloapps_sync_state')
+      .insert({
+        hotel_id: this.hotelId,
+        sync_type: QLOAPPS_CONFIG.SYNC_TYPES.RESERVATIONS_PULL,
+        status: 'running',
+        started_at: startedAt,
+      })
+      .returning(['id']);
+
     try {
-      // Determine modified since date
+      // Determine modified since date using correct column names
       let modifiedSince = options.modifiedSince;
       if (!modifiedSince && !options.fullSync) {
-        // Get last successful sync time
-        const syncState = await db('qloapps_sync_state')
+        const lastSync = await db('qloapps_sync_state')
           .where({
             hotel_id: this.hotelId,
-            entity_type: 'reservation',
+            sync_type: QLOAPPS_CONFIG.SYNC_TYPES.RESERVATIONS_PULL,
+            status: 'completed',
           })
+          .orderBy('completed_at', 'desc')
           .first();
 
-        if (syncState?.last_sync_at) {
-          modifiedSince = new Date(syncState.last_sync_at);
+        if (lastSync?.last_successful_sync) {
+          modifiedSince = new Date(lastSync.last_successful_sync);
         }
       }
 
@@ -700,10 +712,22 @@ export class QloAppsPullSyncService {
         }
       }
 
-      // Update sync state
-      await this.updateSyncState('reservation', true);
+      const completedAt = new Date();
 
-      // Log sync results
+      // Mark sync state as completed with correct column names
+      await db('qloapps_sync_state')
+        .where({ id: syncStateRow.id })
+        .update({
+          status: 'completed',
+          completed_at: completedAt,
+          last_successful_sync: completedAt,
+          reservations_processed: processedCount,
+          reservations_created: createdCount,
+          reservations_updated: updatedCount,
+          reservations_failed: failedCount,
+        });
+
+      // Log sync results with correct schema columns
       await this.logSyncResult({
         syncType: QLOAPPS_CONFIG.SYNC_TYPES.RESERVATIONS_PULL,
         success: failedCount === 0,
@@ -714,15 +738,20 @@ export class QloAppsPullSyncService {
         failedCount,
         errors,
         startedAt,
-        completedAt: new Date(),
+        completedAt,
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       errors.push(errorMessage);
       failedCount++;
 
-      // Update sync state with failure
-      await this.updateSyncState('reservation', false, errorMessage);
+      await db('qloapps_sync_state')
+        .where({ id: syncStateRow.id })
+        .update({
+          status: 'failed',
+          completed_at: new Date(),
+          error_message: errorMessage,
+        });
     }
 
     const completedAt = new Date();
@@ -743,43 +772,16 @@ export class QloAppsPullSyncService {
   }
 
   /**
-   * Update sync state in database
-   */
-  private async updateSyncState(
-    entityType: string,
-    success: boolean,
-    errorMessage?: string
-  ): Promise<void> {
-    const existing = await db('qloapps_sync_state')
-      .where({
-        hotel_id: this.hotelId,
-        entity_type: entityType,
-      })
-      .first();
-
-    const now = new Date();
-    const updates = {
-      last_successful_sync: success ? now : undefined,
-      last_sync_success: success,
-      last_sync_error: success ? null : errorMessage,
-      updated_at: now,
-    };
-
-    if (existing) {
-      await db('qloapps_sync_state')
-        .where({ id: existing.id })
-        .update(updates);
-    } else {
-      await db('qloapps_sync_state').insert({
-        hotel_id: this.hotelId,
-        entity_type: entityType,
-        ...updates,
-      });
-    }
-  }
-
-  /**
-   * Log sync result to database
+   * Log a batch-level sync result to qloapps_sync_logs using the correct schema columns.
+   *
+   * Column mapping vs the old broken version:
+   *  - direction: 'inbound'  (was 'pull' — violates check constraint)
+   *  - operation: 'fetch'    (required NOT NULL — was missing)
+   *  - entity_type: 'reservation' (required NOT NULL — was missing)
+   *  - started_at            (required NOT NULL — was missing)
+   *  - error_message         (was 'error_details' — column does not exist)
+   *  - metadata              (stores aggregated counts; schema has no records_* columns)
+   *  - removed: sync_type, records_processed/created/updated/failed (columns do not exist)
    */
   private async logSyncResult(result: {
     syncType: string;
@@ -795,16 +797,22 @@ export class QloAppsPullSyncService {
   }): Promise<void> {
     await db('qloapps_sync_logs').insert({
       hotel_id: this.hotelId,
-      sync_type: result.syncType,
-      direction: 'pull',
+      operation: 'fetch',
+      entity_type: 'reservation',
+      direction: 'inbound',
       status: result.success ? 'success' : 'failed',
       started_at: result.startedAt,
       completed_at: result.completedAt,
-      records_processed: result.processedCount,
-      records_created: result.createdCount,
-      records_updated: result.updatedCount,
-      records_failed: result.failedCount,
-      error_details: result.errors.length > 0 ? JSON.stringify(result.errors) : null,
+      duration_ms: result.completedAt.getTime() - result.startedAt.getTime(),
+      error_message: result.errors.length > 0 ? result.errors.slice(0, 5).join('; ') : null,
+      metadata: JSON.stringify({
+        sync_type: result.syncType,
+        records_processed: result.processedCount,
+        records_created: result.createdCount,
+        records_updated: result.updatedCount,
+        records_skipped: result.skippedCount,
+        records_failed: result.failedCount,
+      }),
     });
   }
 }

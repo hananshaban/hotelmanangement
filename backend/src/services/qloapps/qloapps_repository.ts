@@ -35,10 +35,14 @@ export interface QloAppsConfigRecord {
 
 export interface RoomTypeMappingRecord {
   id: string;
+  hotel_id: string;
   local_room_type_id: string;
-  qloapps_product_id: number;
-  qloapps_hotel_id: number;
+  qloapps_product_id: string;
+  qloapps_hotel_id: string;
+  metadata: Record<string, unknown> | null;
   last_synced_at: Date | null;
+  last_sync_status: 'success' | 'failed' | 'partial' | null;
+  last_sync_error: string | null;
   sync_direction: 'inbound' | 'outbound' | 'bidirectional';
   is_active: boolean;
   created_at: Date;
@@ -47,14 +51,21 @@ export interface RoomTypeMappingRecord {
 
 export interface ReservationMappingRecord {
   id: string;
+  hotel_id: string;
   local_reservation_id: string;
-  qloapps_order_id: number;
-  qloapps_booking_id: number | null;
-  source: 'local' | 'qloapps' | 'ota';
-  qloapps_channel: string | null;
+  qloapps_order_id: string;
+  qloapps_reference: string | null;
+  qloapps_hotel_id: string;
+  source: 'pms' | 'qloapps' | 'ota';
+  ota_channel: string | null;
+  ota_confirmation_number: string | null;
+  is_active: boolean;
+  qloapps_status_code: number | null;
   last_synced_at: Date | null;
-  last_local_update: Date | null;
-  last_qloapps_update: Date | null;
+  last_sync_status: 'success' | 'failed' | 'partial' | null;
+  last_sync_error: string | null;
+  local_hash: string | null;
+  qloapps_hash: string | null;
   has_conflict: boolean;
   conflict_data: Record<string, unknown> | null;
   created_at: Date;
@@ -63,10 +74,22 @@ export interface ReservationMappingRecord {
 
 export interface CustomerMappingRecord {
   id: string;
+  hotel_id: string;
   local_guest_id: string;
-  qloapps_customer_id: number;
-  match_method: 'email' | 'phone' | 'name' | 'manual';
-  confidence_score: number;
+  qloapps_customer_id: string;
+  qloapps_hotel_id: string;
+  match_type: 'email' | 'phone' | 'manual' | 'booking';
+  sync_direction: 'inbound' | 'outbound' | 'bidirectional';
+  is_active: boolean;
+  is_verified: boolean;
+  local_hash: string | null;
+  qloapps_hash: string | null;
+  last_synced_at: Date | null;
+  last_sync_status: 'success' | 'failed' | 'partial' | null;
+  last_sync_error: string | null;
+  metadata: Record<string, unknown> | null;
+  has_conflict: boolean;
+  conflict_data: Record<string, unknown> | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -108,18 +131,35 @@ export interface SyncStateRecord {
 
 export interface SyncLogRecord {
   id: string;
+  hotel_id: string;
   sync_state_id: string | null;
-  sync_type: string;
+  operation: 'create' | 'update' | 'delete' | 'fetch' | 'push' | 'skip';
+  entity_type: 'reservation' | 'room_type' | 'customer' | 'availability' | 'rate';
   direction: 'inbound' | 'outbound';
-  entity_type: string;
   local_entity_id: string | null;
-  qloapps_entity_id: number | null;
-  operation: 'create' | 'update' | 'delete' | 'skip' | 'conflict';
-  success: boolean;
-  request_data: Record<string, unknown> | null;
-  response_data: Record<string, unknown> | null;
-  error_message: string | null;
+  qloapps_entity_id: string | null;
+  status: 'success' | 'failed' | 'skipped' | 'conflict';
+  started_at: Date;
+  completed_at: Date | null;
   duration_ms: number | null;
+  api_endpoint: string | null;
+  http_method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | null;
+  http_status_code: number | null;
+  request_payload: Record<string, unknown> | null;
+  response_data: Record<string, unknown> | null;
+  local_data_before: Record<string, unknown> | null;
+  local_data_after: Record<string, unknown> | null;
+  error_code: string | null;
+  error_message: string | null;
+  error_stack: string | null;
+  changes: Record<string, unknown> | null;
+  fields_updated: number | null;
+  is_retry: boolean;
+  retry_of_log_id: string | null;
+  retry_attempt: number;
+  had_conflict: boolean;
+  conflict_resolution: 'local_wins' | 'remote_wins' | 'merged' | 'manual' | 'skipped' | null;
+  metadata: Record<string, unknown> | null;
   created_at: Date;
 }
 
@@ -361,6 +401,7 @@ export class RoomTypeMappingRepository {
 
     const [result] = await db('qloapps_room_type_mappings')
       .insert({
+        hotel_id: HOTEL_ID,
         local_room_type_id: data.localRoomTypeId,
         qloapps_product_id: data.qloAppsProductId,
         qloapps_hotel_id: data.qloAppsHotelId,
@@ -502,6 +543,7 @@ export class ReservationMappingRepository {
     const now = new Date();
 
     const insertData: Record<string, unknown> = {
+      hotel_id: HOTEL_ID,
       local_reservation_id: data.localReservationId,
       qloapps_order_id: data.qloAppsOrderId,
       source: data.source,
@@ -657,10 +699,13 @@ export class CustomerMappingRepository {
 
     const [result] = await db('qloapps_customer_mappings')
       .insert({
+        hotel_id: HOTEL_ID,
         local_guest_id: data.localGuestId,
         qloapps_customer_id: data.qloAppsCustomerId,
-        match_method: data.matchMethod,
-        confidence_score: data.confidenceScore ?? 1.0,
+        match_type: data.matchMethod,
+        sync_direction: 'bidirectional',
+        is_active: true,
+        is_verified: data.matchMethod === 'manual',
         created_at: now,
         updated_at: now,
       })
@@ -951,9 +996,9 @@ export class SyncLogRepository {
 
     let query = db('qloapps_sync_logs');
 
-    if (syncType) {
-      query = query.where({ sync_type: syncType });
-    }
+    // NOTE: qloapps_sync_logs does not have a sync_type or boolean success column.
+    // We store syncType in metadata (when available) and use the status column
+    // ('success' / 'failed' / 'skipped' / 'conflict') for success filtering.
     if (direction) {
       query = query.where({ direction });
     }
@@ -961,7 +1006,7 @@ export class SyncLogRepository {
       query = query.where({ entity_type: entityType });
     }
     if (success !== undefined) {
-      query = query.where({ success });
+      query = query.where('status', success ? 'success' : 'failed');
     }
     if (startDate) {
       query = query.where('created_at', '>=', startDate);
@@ -1004,11 +1049,11 @@ export class SyncLogRepository {
     const now = new Date();
 
     const insertData: Record<string, unknown> = {
-      sync_type: data.syncType,
+      hotel_id: HOTEL_ID,
       direction: data.direction,
       entity_type: data.entityType,
       operation: data.operation,
-      success: data.success,
+      status: data.success ? 'success' : 'failed',
       created_at: now,
     };
 
@@ -1019,10 +1064,10 @@ export class SyncLogRepository {
       insertData.local_entity_id = data.localEntityId;
     }
     if (data.qloAppsEntityId !== undefined) {
-      insertData.qloapps_entity_id = data.qloAppsEntityId;
+      insertData.qloapps_entity_id = data.qloAppsEntityId.toString();
     }
     if (data.requestData !== undefined) {
-      insertData.request_data = JSON.stringify(data.requestData);
+      insertData.request_payload = JSON.stringify(data.requestData);
     }
     if (data.responseData !== undefined) {
       insertData.response_data = JSON.stringify(data.responseData);
@@ -1032,6 +1077,9 @@ export class SyncLogRepository {
     }
     if (data.durationMs !== undefined) {
       insertData.duration_ms = data.durationMs;
+    }
+    if (data.syncType !== undefined) {
+      insertData.metadata = JSON.stringify({ sync_type: data.syncType });
     }
 
     const [result] = await db('qloapps_sync_logs')
@@ -1046,7 +1094,7 @@ export class SyncLogRepository {
    */
   async getRecentErrors(limit: number = 10): Promise<SyncLogRecord[]> {
     return db('qloapps_sync_logs')
-      .where({ success: false })
+      .where({ status: 'failed' })
       .orderBy('created_at', 'desc')
       .limit(limit);
   }

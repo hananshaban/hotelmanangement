@@ -1003,13 +1003,15 @@ export async function getSyncLogsHandler(
       logs: result.logs.map((log) => ({
         id: log.id,
         syncStateId: log.sync_state_id,
-        syncType: log.sync_type,
+        // sync_type is stored inside metadata when available
+        syncType:
+          (log.metadata && (log.metadata as any).sync_type) ?? null,
         direction: log.direction,
         entityType: log.entity_type,
         localEntityId: log.local_entity_id,
         qloAppsEntityId: log.qloapps_entity_id,
         operation: log.operation,
-        success: log.success,
+        success: log.status === 'success',
         errorMessage: log.error_message,
         durationMs: log.duration_ms,
         createdAt: log.created_at,
@@ -1041,7 +1043,8 @@ export async function getRecentErrorsHandler(
     res.json({
       errors: errors.map((log) => ({
         id: log.id,
-        syncType: log.sync_type,
+        syncType:
+          (log.metadata && (log.metadata as any).sync_type) ?? null,
         direction: log.direction,
         entityType: log.entity_type,
         operation: log.operation,
