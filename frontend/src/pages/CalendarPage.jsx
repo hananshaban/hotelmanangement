@@ -260,7 +260,7 @@ const CalendarPage = () => {
     }
 
     // Validate second guest for double rooms
-    if (selectedRoom?.type === 'Double' && !newReservation.guest2Id) {
+    if (selectedRoom?.type === 'Double' && !guest2Id) {
       const confirmed = await confirmation({
         title: 'Double Room Selected',
         message: 'Double room selected but no second guest provided. Continue with one guest?',
@@ -732,7 +732,7 @@ const CalendarPage = () => {
                             className={`border-2 rounded-lg p-3 cursor-pointer transition-all ${
                               !unit.available
                                 ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 opacity-50 cursor-not-allowed'
-                                : selectedUnit === index
+                                : selectedUnit === unit.unitIndex
                                 ? 'border-primary-500 bg-primary-50'
                                 : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                             }`}

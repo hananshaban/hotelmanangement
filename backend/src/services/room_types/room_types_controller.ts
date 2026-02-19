@@ -6,11 +6,227 @@ import type {
   RoomTypeResponse,
   RoomTypeAvailability,
   AvailableRoomTypesQuery,
+  RoomType,
 } from './room_types_types.js';
+import type { Beds24RoomType } from '../rooms/rooms_types.js';
 import { RoomTypeAvailabilityService } from './room_type_availability_service.js';
 import { logCreate, logUpdate, logDelete } from '../audit/audit_utils.js';
 
 const availabilityService = new RoomTypeAvailabilityService();
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+function slugifyRoomTypeName(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function mapBeds24ToLegacyRoomType(roomType: Beds24RoomType): 'Single' | 'Double' | 'Suite' {
+  switch (roomType) {
+    case 'single':
+      return 'Single';
+    case 'suite':
+      return 'Suite';
+    default:
+      return 'Double';
+  }
+}
+
+/**
+ * Generate physical room records in `rooms` (and housekeeping entries)
+ * for a given room type.
+ *
+ * Notes:
+ * - Uses deterministic room numbers: {slugified-name}-{index}
+ * - Skips room_numbers that already exist for this hotel to avoid conflicts
+ */
+async function generateRoomsForRoomType(
+  roomType: RoomType,
+  hotelId: string,
+): Promise<void> {
+  const baseSlug = slugifyRoomTypeName(roomType.name);
+  const legacyType = mapBeds24ToLegacyRoomType(roomType.room_type);
+
+  for (let i = 1; i <= roomType.qty; i += 1) {
+    const roomNumber = `${baseSlug}-${i}`;
+
+    // Skip if a room with this number already exists for this hotel
+    const existingRoom = await db('rooms')
+      .where({ hotel_id: hotelId, room_number: roomNumber })
+      .first();
+
+    if (existingRoom) {
+      continue;
+    }
+
+    const [room] = await db('rooms')
+      .insert({
+        hotel_id: hotelId,
+        room_number: roomNumber,
+        type: legacyType,
+        room_type: roomType.room_type,
+        room_type_id: roomType.id,
+        status: 'Available',
+        price_per_night: roomType.price_per_night,
+        floor: roomType.floor ?? 1,
+        features: JSON.stringify(roomType.features || []),
+        description: roomType.description || null,
+      })
+      .returning(['id', 'status']);
+
+    // Create housekeeping record for the room
+    await db('housekeeping').insert({
+      hotel_id: hotelId,
+      room_id: room.id,
+      status: room.status === 'Occupied' ? 'Dirty' : room.status === 'Cleaning' ? 'In Progress' : 'Clean',
+    });
+  }
+}
+
+/**
+ * Sync physical rooms when room type qty or name changes.
+ *
+ * - If qty increases: create additional rooms with new suffixes
+ * - If qty decreases: delete removable rooms (no check_ins history), highest suffix first
+ * - If name changes: rename room_number prefix for rooms without check_ins history
+ */
+async function syncRoomsOnRoomTypeChange(
+  existing: RoomType,
+  updated: RoomType,
+  hotelId: string,
+): Promise<void> {
+  const oldQty = existing.qty;
+  const newQty = updated.qty;
+  const nameChanged = existing.name !== updated.name;
+
+  // Fetch all rooms linked to this room type for this hotel
+  const rooms = await db('rooms')
+    .where({ hotel_id: hotelId, room_type_id: existing.id })
+    .orderBy('room_number', 'asc');
+
+  // Handle name change: rename rooms without any check_ins history
+  if (nameChanged) {
+    const oldSlug = slugifyRoomTypeName(existing.name);
+    const newSlug = slugifyRoomTypeName(updated.name);
+
+    // Only update rooms that follow the old slug pattern and have no check_ins
+    // to avoid touching historical data
+    for (const room of rooms) {
+      if (typeof room.room_number !== 'string') continue;
+      if (!room.room_number.startsWith(`${oldSlug}-`)) continue;
+
+      const hasCheckIns = await db('check_ins')
+        .where({ actual_room_id: room.id })
+        .first();
+      if (hasCheckIns) continue;
+
+      const suffix = room.room_number.substring(oldSlug.length);
+      const newRoomNumber = `${newSlug}${suffix}`;
+
+      // Avoid collisions
+      const conflict = await db('rooms')
+        .where({ hotel_id: hotelId, room_number: newRoomNumber })
+        .whereNot({ id: room.id })
+        .first();
+      if (conflict) continue;
+
+      await db('rooms')
+        .where({ id: room.id })
+        .update({
+          room_number: newRoomNumber,
+          updated_at: db.fn.now(),
+        });
+    }
+  }
+
+  // Handle qty changes
+  if (newQty > oldQty) {
+    // Create additional rooms
+    const baseSlug = slugifyRoomTypeName(updated.name);
+    const legacyType = mapBeds24ToLegacyRoomType(updated.room_type);
+
+    // Determine existing indices from room_number suffixes to avoid collisions
+    const usedIndices = new Set<number>();
+    for (const room of rooms) {
+      if (typeof room.room_number !== 'string') continue;
+      const match = room.room_number.match(/^.+-(\d+)$/);
+      if (match) {
+        const idx = parseInt(match[1], 10);
+        if (!Number.isNaN(idx)) usedIndices.add(idx);
+      }
+    }
+
+    let created = 0;
+    let nextIndex = 1;
+    while (created < newQty - oldQty) {
+      if (usedIndices.has(nextIndex)) {
+        nextIndex += 1;
+        continue;
+      }
+
+      const roomNumber = `${baseSlug}-${nextIndex}`;
+      const [room] = await db('rooms')
+        .insert({
+          hotel_id: hotelId,
+          room_number: roomNumber,
+          type: legacyType,
+          room_type: updated.room_type,
+          room_type_id: existing.id,
+          status: 'Available',
+          price_per_night: updated.price_per_night,
+          floor: updated.floor ?? 1,
+          features: JSON.stringify(updated.features || []),
+          description: updated.description || null,
+        })
+        .returning(['id', 'status']);
+
+      await db('housekeeping').insert({
+        hotel_id: hotelId,
+        room_id: room.id,
+        status: 'Clean',
+      });
+
+      usedIndices.add(nextIndex);
+      created += 1;
+      nextIndex += 1;
+    }
+  } else if (newQty < oldQty) {
+    // Remove excess rooms, but only those without any check_ins history
+    const targetCount = newQty;
+
+    // Re-fetch rooms to include any created earlier in this function
+    const allRooms = await db('rooms')
+      .where({ hotel_id: hotelId, room_type_id: existing.id })
+      .orderBy('room_number', 'desc'); // delete highest suffix first
+
+    for (const room of allRooms) {
+      if (allRooms.length <= targetCount) {
+        break;
+      }
+
+      const hasCheckIns = await db('check_ins')
+        .where({ actual_room_id: room.id })
+        .first();
+      if (hasCheckIns) {
+        continue;
+      }
+
+      // Delete housekeeping first (if not cascaded), then room
+      await db('housekeeping')
+        .where({ room_id: room.id, hotel_id: hotelId })
+        .delete();
+
+      await db('rooms')
+        .where({ id: room.id })
+        .delete();
+    }
+  }
+}
 
 /**
  * Get all room types
@@ -159,11 +375,18 @@ export async function createRoomTypeHandler(
       })
       .returning('*');
 
-    const roomTypeWithParsed = {
-      ...roomType,
-      features: Array.isArray(roomType.features) ? roomType.features : (typeof roomType.features === 'string' ? JSON.parse(roomType.features || '[]') : []),
-      units: Array.isArray(roomType.units) ? roomType.units : (typeof roomType.units === 'string' ? JSON.parse(roomType.units || '[]') : []),
+    const roomTypeWithParsed: RoomType = {
+      ...(roomType as RoomType),
+      features: Array.isArray(roomType.features)
+        ? roomType.features
+        : (typeof roomType.features === 'string' ? JSON.parse(roomType.features || '[]') : []),
+      units: Array.isArray(roomType.units)
+        ? roomType.units
+        : (typeof roomType.units === 'string' ? JSON.parse(roomType.units || '[]') : []),
     };
+
+    // Generate physical rooms for this room type so operational flows can work
+    await generateRoomsForRoomType(roomTypeWithParsed, hotelId);
 
     res.status(201).json(roomTypeWithParsed as RoomTypeResponse);
 
@@ -258,17 +481,39 @@ export async function updateRoomTypeHandler(
     if (data.units !== undefined) updateData.units = JSON.stringify(data.units);
     if (data.cm_room_id !== undefined) updateData.cm_room_id = data.cm_room_id;
 
+    const existingParsed: RoomType = {
+      ...(existing as RoomType),
+      features: Array.isArray(existing.features)
+        ? existing.features
+        : (typeof existing.features === 'string' ? JSON.parse(existing.features || '[]') : []),
+      units: Array.isArray(existing.units)
+        ? existing.units
+        : (typeof existing.units === 'string' ? JSON.parse(existing.units || '[]') : []),
+    };
+
     // Update room type
     const [roomType] = await db('room_types')
       .where({ id })
       .update(updateData)
       .returning('*');
 
-    const roomTypeWithParsed = {
-      ...roomType,
-      features: Array.isArray(roomType.features) ? roomType.features : (typeof roomType.features === 'string' ? JSON.parse(roomType.features || '[]') : []),
-      units: Array.isArray(roomType.units) ? roomType.units : (typeof roomType.units === 'string' ? JSON.parse(roomType.units || '[]') : []),
+    const roomTypeWithParsed: RoomType = {
+      ...(roomType as RoomType),
+      features: Array.isArray(roomType.features)
+        ? roomType.features
+        : (typeof roomType.features === 'string' ? JSON.parse(roomType.features || '[]') : []),
+      units: Array.isArray(roomType.units)
+        ? roomType.units
+        : (typeof roomType.units === 'string' ? JSON.parse(roomType.units || '[]') : []),
     };
+
+    // Sync physical rooms if qty or name changed
+    if (
+      roomTypeWithParsed.qty !== existingParsed.qty ||
+      roomTypeWithParsed.name !== existingParsed.name
+    ) {
+      await syncRoomsOnRoomTypeChange(existingParsed, roomTypeWithParsed, hotelId);
+    }
 
     res.json(roomTypeWithParsed as RoomTypeResponse);
 

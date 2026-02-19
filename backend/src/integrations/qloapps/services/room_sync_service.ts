@@ -323,9 +323,10 @@ export class QloAppsRoomSyncService {
       // Map QloApps room to PMS format
       const roomData = mapQloAppsRoomToPms(qloAppsRoom, pmsRoomType);
 
-      // Insert room
+      // Insert room - scoped to current hotel
       const [room] = await db('rooms')
         .insert({
+          hotel_id: this.hotelId,
           room_number: roomData.room_number,
           type: roomData.type,
           room_type: mapTypeToRoomType(roomData.type),

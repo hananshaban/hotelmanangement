@@ -316,7 +316,10 @@ export class QloAppsRoomTypeSyncService {
         console.log(`[QloApps RoomType] 📊 Room type data:`, JSON.stringify(roomTypeData, null, 2));
 
         const [newRoomType] = await db('room_types')
-          .insert(roomTypeData)
+          .insert({
+            hotel_id: this.hotelId,
+            ...roomTypeData,
+          })
           .returning(['id', 'name', 'room_type', 'qty', 'price_per_night']);
 
         console.log(`[QloApps RoomType] ✅ Created PMS room type: ${JSON.stringify(newRoomType)}`);

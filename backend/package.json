@@ -16,6 +16,7 @@
     "worker:inbound": "tsx src/workers/inbound_worker.ts",
     "worker:outbound": "tsx src/workers/outbound_worker.ts",
     "worker:sync": "tsx src/workers/sync_scheduler.ts",
+    "script:fix-orphaned-rooms": "tsx scripts/fix_orphaned_rooms_hotel_id.ts",
     "db:migrate": "knex migrate:latest --knexfile knexfile.ts",
     "db:migrate:make": "knex migrate:make --knexfile knexfile.ts -x ts",
     "db:migrate:rollback": "knex migrate:rollback --knexfile knexfile.ts",

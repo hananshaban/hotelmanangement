@@ -633,6 +633,25 @@ export async function getEligibleRooms(
     )
     .orderBy('rooms.room_number', 'asc');
 
+  // Diagnostics: if no rooms are found for this hotel, check if rooms exist in other hotels
+  if (rooms.length === 0) {
+    const anyRooms = await db('rooms')
+      .count<{ count: string }>('id as count')
+      .first();
+
+    const totalRooms = anyRooms ? parseInt(anyRooms.count, 10) : 0;
+
+    if (totalRooms === 0) {
+      // No rooms at all in the system – likely initial setup issue
+      throw new Error('Cannot get eligible rooms. No rooms are configured in the system.');
+    }
+
+    // Rooms exist, but none for this hotel_id – likely hotel/room mismatch
+    throw new Error(
+      `Cannot get eligible rooms. No rooms are registered for this hotel (hotel_id=${hotelId}).`,
+    );
+  }
+
   // Filter out rooms that are occupied during the reservation dates
   const availableRooms: RoomDetails[] = [];
 
