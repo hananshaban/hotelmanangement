@@ -458,6 +458,7 @@ export async function createReservationHandler(
         reservation_id: newReservation.id,
         guest_id: finalGuestId,
         guest_type: 'Primary',
+        hotel_id: hotelId,
       });
 
       // Create secondary guest link if provided
@@ -471,6 +472,7 @@ export async function createReservationHandler(
           reservation_id: newReservation.id,
           guest_id: secondary_guest_id,
           guest_type: 'Secondary',
+          hotel_id: hotelId,
         });
       }
 

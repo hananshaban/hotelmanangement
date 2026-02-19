@@ -186,6 +186,7 @@ const SettingsPage = () => {
         email: editingStaff.email,
         role: editingStaff.role,
         is_active: editingStaff.is_active,
+        hotel_ids: editingStaff.hotel_ids || [],
       }
       
       // Only include password if it was provided

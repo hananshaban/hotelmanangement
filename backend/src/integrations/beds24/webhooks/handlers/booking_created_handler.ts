@@ -54,6 +54,7 @@ export async function handleBookingCreated(booking: Beds24Booking | any): Promis
     // Find room type by cm_room_id (preferred) or fallback to individual room
     let roomTypeId: string | null = null;
     let roomId: string | null = null;
+    let hotelId: string | null = null;
 
     // Try to find room type first (new CM-style with unitId support)
     const roomType = await db('room_types')
@@ -63,6 +64,7 @@ export async function handleBookingCreated(booking: Beds24Booking | any): Promis
 
     if (roomType) {
       roomTypeId = roomType.id;
+      hotelId = roomType.hotel_id;
     } else {
       // Fallback to individual room (legacy)
       const room = await db('rooms')
@@ -77,6 +79,7 @@ export async function handleBookingCreated(booking: Beds24Booking | any): Promis
       }
 
       roomId = room.id;
+      hotelId = room.hotel_id;
     }
 
     // Map booking to PMS format with correct entity type
@@ -101,6 +104,7 @@ export async function handleBookingCreated(booking: Beds24Booking | any): Promis
       .insert({
         ...reservationData,
         source: 'Beds24', // Mark as Beds24-originated
+        hotel_id: hotelId,
       })
       .returning('id');
 
@@ -109,6 +113,7 @@ export async function handleBookingCreated(booking: Beds24Booking | any): Promis
       reservation_id: reservation.id,
       guest_id: guestId,
       guest_type: 'Primary',
+      hotel_id: hotelId,
     });
 
     // Update room status if checked in (only for individual rooms, not room types)

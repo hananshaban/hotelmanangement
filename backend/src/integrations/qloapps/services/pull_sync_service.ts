@@ -512,6 +512,7 @@ export class QloAppsPullSyncService {
         num_adult: reservationData.num_adult,
         num_child: reservationData.num_child,
         channel: reservationData.channel,
+        hotel_id: this.hotelId,
       })
       .returning(['id']);
 
@@ -520,6 +521,7 @@ export class QloAppsPullSyncService {
       reservation_id: reservation.id,
       guest_id: guestId,
       guest_type: 'Primary',
+      hotel_id: this.hotelId,
     });
 
     // Create mapping record

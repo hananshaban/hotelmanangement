@@ -123,13 +123,14 @@ const CheckInModal = ({ isOpen, onClose, reservation }) => {
               {eligibleRooms.map((room) => (
                 <option key={room.id} value={room.id}>
                   Room {room.room_number} - {room.room_type || room.type}
-                  {room.id === reservation.roomId && ' (Preferred)'}
+                  {room.is_preferred && ' ⭐ (Matches Reserved Type)'}
+                  {!room.is_preferred && room.id === reservation.roomId && ' (Reserved)'}
                 </option>
               ))}
             </select>
           )}
           <p className="text-xs text-gray-500 mt-1">
-            Only rooms matching the reserved room type and currently available are shown
+            Available rooms are shown (rooms matching the reserved type appear first with ⭐)
           </p>
         </div>
 

@@ -10,6 +10,7 @@ export async function getReportStatsHandler(
 ) {
   try {
     const { start_date, end_date } = req.query;
+    const hotelId = (req as any).hotelId;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -20,7 +21,9 @@ export async function getReportStatsHandler(
     const next7DaysStr = next7Days.toISOString().split('T')[0];
 
     // Reservations statistics
-    let reservationsQuery = db('reservations').whereNull('deleted_at');
+    let reservationsQuery = db('reservations')
+      .where('reservations.hotel_id', hotelId)
+      .whereNull('deleted_at');
     if (start_date) {
       reservationsQuery = reservationsQuery.whereRaw('check_in >= ?', [start_date as string]);
     }
@@ -35,6 +38,7 @@ export async function getReportStatsHandler(
     });
 
     const todaysCheckIns = await db('reservations')
+      .where('reservations.hotel_id', hotelId)
       .whereRaw('check_in = ?', [todayStr])
       .whereIn('status', ['Confirmed', 'Checked-in'])
       .whereNull('deleted_at')
@@ -42,6 +46,7 @@ export async function getReportStatsHandler(
       .first();
 
     const todaysCheckOuts = await db('reservations')
+      .where('reservations.hotel_id', hotelId)
       .whereRaw('check_out = ?', [todayStr])
       .whereIn('status', ['Checked-in', 'Checked-out'])
       .whereNull('deleted_at')
@@ -49,6 +54,7 @@ export async function getReportStatsHandler(
       .first();
 
     const upcomingCheckIns = await db('reservations')
+      .where('reservations.hotel_id', hotelId)
       .whereRaw('check_in > ?', [todayStr])
       .whereRaw('check_in <= ?', [next7DaysStr])
       .whereIn('status', ['Confirmed'])
@@ -57,6 +63,7 @@ export async function getReportStatsHandler(
       .first();
 
     const upcomingCheckOuts = await db('reservations')
+      .where('reservations.hotel_id', hotelId)
       .whereRaw('check_out > ?', [todayStr])
       .whereRaw('check_out <= ?', [next7DaysStr])
       .whereIn('status', ['Checked-in'])
@@ -65,13 +72,17 @@ export async function getReportStatsHandler(
       .first();
 
     // Guests statistics
-    let guestsQuery = db('guests').whereNull('deleted_at');
+    let guestsQuery = db('guests')
+      .where('guests.hotel_id', hotelId)
+      .whereNull('deleted_at');
     const allGuests = await guestsQuery;
     const guestsWithPastStays = allGuests.filter((g) => (g.past_stays || 0) > 0).length;
     const newGuests = allGuests.filter((g) => (g.past_stays || 0) === 0).length;
 
     // Invoices statistics
-    let invoicesQuery = db('invoices').whereNull('deleted_at');
+    let invoicesQuery = db('invoices')
+      .where('invoices.hotel_id', hotelId)
+      .whereNull('deleted_at');
     if (start_date) {
       invoicesQuery = invoicesQuery.whereRaw('issue_date >= ?', [start_date as string]);
     }
@@ -94,6 +105,7 @@ export async function getReportStatsHandler(
     });
 
     const overdueInvoices = await db('invoices')
+      .where('invoices.hotel_id', hotelId)
       .where('status', 'Pending')
       .whereRaw('due_date < ?', [todayStr])
       .whereNull('deleted_at')
@@ -101,7 +113,9 @@ export async function getReportStatsHandler(
       .first();
 
     // Expenses statistics
-    let expensesQuery = db('expenses').whereNull('deleted_at');
+    let expensesQuery = db('expenses')
+      .where('expenses.hotel_id', hotelId)
+      .whereNull('deleted_at');
     if (start_date) {
       expensesQuery = expensesQuery.whereRaw('expense_date >= ?', [start_date as string]);
     }
@@ -125,12 +139,14 @@ export async function getReportStatsHandler(
 
     // Occupancy statistics - use room_types with qty for total rooms count
     const totalRoomsResult = await db('room_types')
+      .where('room_types.hotel_id', hotelId)
       .whereNull('deleted_at')
       .sum('qty as total');
     const totalRoomsCount = totalRoomsResult?.[0]?.total ? parseInt(String(totalRoomsResult[0].total), 10) : 0;
 
     // Count occupied rooms from checked-in reservations
     const occupiedRooms = await db('reservations')
+      .where('reservations.hotel_id', hotelId)
       .whereRaw('check_in <= ?', [todayStr])
       .whereRaw('check_out > ?', [todayStr])
       .whereIn('status', ['Checked-in'])
@@ -147,6 +163,7 @@ export async function getReportStatsHandler(
     const last30DaysStr = last30Days.toISOString().split('T')[0];
 
     const reservationsLast30Days = await db('reservations')
+      .where('reservations.hotel_id', hotelId)
       .whereRaw('check_in >= ?', [last30DaysStr])
       .whereRaw('check_in <= ?', [todayStr])
       .whereIn('status', ['Checked-in', 'Checked-out'])

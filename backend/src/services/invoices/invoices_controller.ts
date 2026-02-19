@@ -3,6 +3,9 @@ import db from '../../config/database.js';
 import type { CreateInvoiceRequest, UpdateInvoiceRequest, InvoiceResponse } from './invoices_types.js';
 import { logCreate, logUpdate, logDelete, logAction } from '../audit/audit_utils.js';
 
+// Default hotel ID for backward compatibility
+const DEFAULT_HOTEL_ID = '00000000-0000-0000-0000-000000000000';
+
 // Get all invoices
 export async function getInvoicesHandler(
   req: Request,
@@ -10,6 +13,7 @@ export async function getInvoicesHandler(
   next: NextFunction,
 ) {
   try {
+    const hotelId = (req as any).hotelId || DEFAULT_HOTEL_ID;
     const { status, search, reservation_id, guest_id } = req.query;
 
     let query = db('invoices')
@@ -22,6 +26,7 @@ export async function getInvoicesHandler(
       )
       .leftJoin('reservations', 'invoices.reservation_id', 'reservations.id')
       .join('guests', 'invoices.guest_id', 'guests.id')
+      .where('invoices.hotel_id', hotelId)
       .whereNull('invoices.deleted_at')
       .orderBy('invoices.created_at', 'desc');
 
@@ -79,6 +84,7 @@ export async function getInvoiceHandler(
   next: NextFunction,
 ) {
   try {
+    const hotelId = (req as any).hotelId || DEFAULT_HOTEL_ID;
     const { id } = req.params;
 
     const invoice = await db('invoices')
@@ -92,6 +98,7 @@ export async function getInvoiceHandler(
       .leftJoin('reservations', 'invoices.reservation_id', 'reservations.id')
       .join('guests', 'invoices.guest_id', 'guests.id')
       .where('invoices.id', id)
+      .where('invoices.hotel_id', hotelId)
       .whereNull('invoices.deleted_at')
       .first();
 
@@ -134,6 +141,7 @@ export async function createInvoiceHandler(
   next: NextFunction,
 ) {
   try {
+    const hotelId = (req as any).hotelId || DEFAULT_HOTEL_ID;
     const {
       reservation_id,
       guest_id,
@@ -170,8 +178,8 @@ export async function createInvoiceHandler(
       return;
     }
 
-    // Check if guest exists
-    const guest = await db('guests').where({ id: guest_id }).first();
+    // Check if guest exists and belongs to the same hotel
+    const guest = await db('guests').where({ id: guest_id, hotel_id: hotelId }).first();
     if (!guest) {
       res.status(404).json({
         error: 'Guest not found',
@@ -179,10 +187,10 @@ export async function createInvoiceHandler(
       return;
     }
 
-    // Check if reservation exists if provided
+    // Check if reservation exists if provided and belongs to the same hotel
     if (reservation_id) {
       const reservation = await db('reservations')
-        .where({ id: reservation_id })
+        .where({ id: reservation_id, hotel_id: hotelId })
         .whereNull('deleted_at')
         .first();
       if (!reservation) {
@@ -196,6 +204,7 @@ export async function createInvoiceHandler(
     // Create invoice
     const [newInvoice] = await db('invoices')
       .insert({
+        hotel_id: hotelId,
         reservation_id: reservation_id || null,
         guest_id,
         issue_date: issueDate.toISOString().split('T')[0],
@@ -265,12 +274,13 @@ export async function updateInvoiceHandler(
   next: NextFunction,
 ) {
   try {
+    const hotelId = (req as any).hotelId || DEFAULT_HOTEL_ID;
     const { id } = req.params;
     const updates = req.body;
 
-    // Check if invoice exists
+    // Check if invoice exists and belongs to the same hotel
     const existing = await db('invoices')
-      .where({ id })
+      .where({ id, hotel_id: hotelId })
       .whereNull('deleted_at')
       .first();
 
@@ -290,8 +300,8 @@ export async function updateInvoiceHandler(
     }
 
     if (updates.guest_id !== undefined) {
-      // Check if guest exists
-      const guest = await db('guests').where({ id: updates.guest_id }).first();
+      // Check if guest exists and belongs to the same hotel
+      const guest = await db('guests').where({ id: updates.guest_id, hotel_id: hotelId }).first();
       if (!guest) {
         res.status(404).json({
           error: 'Guest not found',
@@ -424,10 +434,11 @@ export async function deleteInvoiceHandler(
   next: NextFunction,
 ) {
   try {
+    const hotelId = (req as any).hotelId || DEFAULT_HOTEL_ID;
     const { id } = req.params;
 
     const invoice = await db('invoices')
-      .where({ id })
+      .where({ id, hotel_id: hotelId })
       .whereNull('deleted_at')
       .first();
 

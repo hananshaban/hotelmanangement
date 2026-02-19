@@ -61,7 +61,6 @@ export async function checkInGuest(
     // 2. Validate room exists and is available
     const room = await trx('rooms')
       .where({ id: request.actual_room_id, hotel_id: hotelId })
-      .whereNull('deleted_at')
       .first();
 
     if (!room) {
@@ -86,7 +85,6 @@ export async function checkInGuest(
         actual_room_id: request.actual_room_id,
         status: 'checked_in',
       })
-      .whereNull('deleted_at')
       .first();
 
     if (existingCheckIn) {
@@ -267,7 +265,6 @@ export async function changeRoom(
     // 2. Validate new room exists and is available
     const newRoom = await trx('rooms')
       .where({ id: request.new_room_id, hotel_id: hotelId })
-      .whereNull('deleted_at')
       .first();
 
     if (!newRoom) {
@@ -599,13 +596,14 @@ export async function getEligibleRooms(
 ): Promise<EligibleRoomsResponse> {
   // Fetch reservation details
   const reservation = await db('reservations')
-    .where({ id: reservationId, hotel_id: hotelId })
-    .whereNull('deleted_at')
+    .where({ 'reservations.id': reservationId, 'reservations.hotel_id': hotelId })
+    .whereNull('reservations.deleted_at')
     .leftJoin('room_types', 'reservations.room_type_id', 'room_types.id')
     .leftJoin('rooms as reserved_room', 'reservations.reserved_room_id', 'reserved_room.id')
     .select(
       'reservations.*',
       'room_types.name as room_type_name',
+      'room_types.room_type as room_type_enum',
       'reserved_room.room_number as reserved_room_number'
     )
     .first();
@@ -618,19 +616,10 @@ export async function getEligibleRooms(
     throw new Error(`Cannot get eligible rooms. Reservation status is: ${reservation.status}`);
   }
 
-  // Find available rooms of the same type (or all rooms if no type specified)
-  let roomsQuery = db('rooms')
+  // Find all available rooms for the hotel (no room_type filter to avoid empty results)
+  const rooms = await db('rooms')
     .where({ hotel_id: hotelId })
-    .whereNull('deleted_at')
-    .whereNotIn('status', ['Out of Service']);
-
-  // Filter by room type if specified
-  if (reservation.room_type_id) {
-    roomsQuery = roomsQuery.where('room_type_id', reservation.room_type_id);
-  }
-
-  // Get rooms
-  const rooms = await roomsQuery
+    .whereNotIn('status', ['Out of Service'])
     .select(
       'rooms.id',
       'rooms.room_number',
@@ -674,6 +663,11 @@ export async function getEligibleRooms(
       .first();
 
     if (!occupiedCheckIn) {
+      // Check if room matches the reserved room type
+      const isPreferred = reservation.room_type_enum 
+        ? room.room_type === reservation.room_type_enum 
+        : false;
+
       availableRooms.push({
         id: room.id,
         room_number: room.room_number,
@@ -684,9 +678,17 @@ export async function getEligibleRooms(
         features: room.features || [],
         description: room.description,
         price_per_night: parseFloat(room.price_per_night),
+        is_preferred: isPreferred,
       });
     }
   }
+
+  // Sort rooms: preferred rooms first, then by room number
+  availableRooms.sort((a, b) => {
+    if (a.is_preferred && !b.is_preferred) return -1;
+    if (!a.is_preferred && b.is_preferred) return 1;
+    return a.room_number.localeCompare(b.room_number);
+  });
 
   return {
     reservation_id: reservationId,

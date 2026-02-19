@@ -118,6 +118,7 @@ export interface RoomDetails {
   features: string[];
   description?: string;
   price_per_night: number;
+  is_preferred?: boolean; // True if room type matches reservation's room type
 }
 
 /**

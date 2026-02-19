@@ -168,6 +168,7 @@ export class PullSyncService {
         // Find room type by cm_room_id (preferred) or fallback to individual room
         let roomTypeId: string | null = null;
         let roomId: string | null = null;
+        let hotelId: string | null = null;
 
         // Try to find room type first (new CM-style)
         const roomType = await db('room_types')
@@ -177,6 +178,7 @@ export class PullSyncService {
 
         if (roomType) {
           roomTypeId = roomType.id;
+          hotelId = roomType.hotel_id;
           console.log(`Found room type: ${roomType.name} (PMS ID: ${roomType.id})`);
         } else {
           // Fallback to individual room (legacy)
@@ -199,6 +201,7 @@ export class PullSyncService {
           }
 
           roomId = room.id;
+          hotelId = room.hotel_id;
           console.log(`Found room: ${room.room_number} (PMS ID: ${room.id})`);
         }
 
@@ -265,6 +268,7 @@ export class PullSyncService {
             .insert({
               ...reservationData,
               source: 'Beds24',
+              hotel_id: hotelId,
             })
             .returning('id');
 
@@ -275,6 +279,7 @@ export class PullSyncService {
             reservation_id: reservation.id,
             guest_id: guestId,
             guest_type: 'Primary',
+            hotel_id: hotelId,
           });
 
           results.push({
