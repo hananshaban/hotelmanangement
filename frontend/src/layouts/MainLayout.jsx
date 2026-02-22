@@ -170,21 +170,26 @@ const MainLayout = ({ children, onLogout }) => {
         {/* Header */}
         <header className={`sticky top-0 z-30 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b`}>
           <div className="flex items-center justify-between px-4 lg:px-8 py-4 gap-4">
-            {/* Hamburger menu for mobile */}
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className={`lg:hidden p-2 rounded-lg transition-colors ${
-                darkMode
-                  ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              aria-label="Open menu"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+            {/* Left: Hamburger menu and hotel name/title */}
+            <div className="flex items-center gap-4 flex-1 min-w-0">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className={`lg:hidden p-2 rounded-lg transition-colors ${
+                  darkMode
+                    ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                aria-label="Open menu"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+              {/* Hotel name/title */}
+              <span className={`text-xl font-bold truncate ${darkMode ? 'text-primary-400' : 'text-primary-600'}`}>Hotel Manager</span>
+            </div>
 
+            {/* Right: Notifications and dark mode toggle */}
             <div className="flex items-center gap-4">
               <Notifications />
               <button
